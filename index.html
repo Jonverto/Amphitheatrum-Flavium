@@ -3,10 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Amphitheatrum Flavium: Colosseum 3D RPG</title>
+  <title>Amphitheatrum Flavium: Colosseum 3D</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800;900&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   
+  <!-- Import Map para Three.js y Cargadores 3D -->
   <script type="importmap">
     {
       "imports": {
@@ -17,973 +18,266 @@
   </script>
 
   <style>
-    body {
-      font-family: 'Inter', sans-serif;
-      background-color: #05070a;
-      color: #e2e8f0;
-      overflow-x: hidden;
-      user-select: none;
-    }
+    body { font-family: 'Inter', sans-serif; background-color: #05070a; color: #e2e8f0; overflow-x: hidden; user-select: none; }
     .font-cinzel { font-family: 'Cinzel', serif; }
-    
     .wow-panel {
       background: linear-gradient(180deg, rgba(18, 23, 35, 0.97) 0%, rgba(8, 11, 18, 0.99) 100%);
       border: 2px solid #85622a;
-      box-shadow: 0 12px 35px rgba(0,0,0,0.92), inset 0 0 18px rgba(133, 98, 42, 0.18);
+      box-shadow: 0 12px 35px rgba(0,0,0,0.92);
     }
     .wow-btn {
       background: linear-gradient(180deg, #b45309 0%, #78350f 100%);
       border: 1px solid #fbbf24;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.7), inset 0 1px 1px rgba(255, 255, 255, 0.35);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.7);
       transition: all 0.15s ease;
     }
-    .wow-btn:hover:not(:disabled) {
-      filter: brightness(1.22);
-      transform: translateY(-1px);
-    }
-    .wow-btn:disabled {
-      filter: grayscale(0.95);
-      opacity: 0.45;
-      cursor: not-allowed;
-    }
+    .wow-btn:hover:not(:disabled) { filter: brightness(1.22); transform: translateY(-1px); }
+    .wow-btn:disabled { filter: grayscale(0.9); opacity: 0.4; cursor: not-allowed; }
 
     @keyframes floatDamage {
-      0% { opacity: 1; transform: translateY(0) scale(0.75); }
-      25% { opacity: 1; transform: translateY(-24px) scale(1.22); }
-      100% { opacity: 0; transform: translateY(-70px) scale(0.9); }
+      0% { opacity: 1; transform: translateY(0) scale(0.8); }
+      100% { opacity: 0; transform: translateY(-65px) scale(1); }
     }
     .dmg-popup {
-      position: absolute;
-      pointer-events: none;
-      font-family: 'Cinzel', serif;
-      font-weight: 900;
-      text-shadow: 0 3px 10px rgba(0,0,0,0.98);
-      animation: floatDamage 1.05s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-      z-index: 35;
-    }
-
-    @keyframes popModal {
-      0% { opacity: 0; transform: scale(0.85); }
-      100% { opacity: 1; transform: scale(1); }
-    }
-    .modal-animate {
-      animation: popModal 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      position: absolute; pointer-events: none; font-family: 'Cinzel', serif; font-weight: 900;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.9); animation: floatDamage 0.9s ease-out forwards; z-index: 35;
     }
   </style>
 </head>
-<body class="min-h-screen flex flex-col justify-between p-2 md:p-4">
+<body class="min-h-screen flex flex-col justify-between p-3 md:p-6">
 
-  <!-- PANTALLA DE CARGA DE MODELOS -->
-  <div id="loading-overlay" class="fixed inset-0 z-50 bg-slate-950/95 flex flex-col items-center justify-center p-6">
-    <div class="w-16 h-16 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mb-5"></div>
-    <h1 class="font-cinzel text-2xl md:text-3xl font-black text-amber-400 tracking-wider mb-2">AMPHITHEATRUM FLAVIUM 3D</h1>
-    <p id="loading-status" class="text-sm text-slate-400 mb-4">Construyendo la arena y equipando armaduras medievales...</p>
-    <div class="w-72 h-3 bg-slate-800 rounded-full overflow-hidden border border-amber-700/50">
-      <div id="loading-bar" class="h-full bg-gradient-to-r from-amber-600 to-yellow-400 w-1/4 transition-all duration-300"></div>
-    </div>
+  <!-- PANTALLA DE CARGA -->
+  <div id="loading-overlay" class="fixed inset-0 z-50 bg-slate-950 flex flex-col items-center justify-center p-6">
+    <div class="w-14 h-14 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+    <h1 class="font-cinzel text-xl font-bold text-amber-400 mb-1">CARGANDO ANFITEATRO FLAVIO 3D</h1>
+    <p id="loading-status" class="text-xs text-slate-400">Conectando modelo 3D y motor de combate...</p>
   </div>
 
-  <!-- MODAL DE CREACIÓN DE CAMPEÓN -->
-  <div id="creation-modal" class="fixed inset-0 z-40 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
-    <div class="wow-panel modal-animate rounded-xl max-w-3xl w-full p-6 border-2 border-amber-500/80">
-      <div class="flex flex-wrap items-center justify-between border-b border-amber-900/60 pb-3 mb-5 gap-2">
-        <div>
-          <h2 class="font-cinzel text-2xl md:text-3xl font-extrabold text-amber-400">FORJA TU GLADIADOR ROMANO</h2>
-          <p class="text-xs text-slate-400">Elige tu clase, naturaleza innata y entra a la arena del Amphitheatrum Flavium.</p>
-        </div>
-        <label class="cursor-pointer bg-amber-950/80 hover:bg-amber-900 text-amber-200 border border-amber-500 px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-2">
-          <span>📂 Cargar .GLB Propio</span>
-          <input type="file" id="custom-glb-input" accept=".glb,.gltf" class="hidden" />
-        </label>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-        <div class="space-y-4">
-          <div>
-            <label class="text-xs font-bold uppercase tracking-wider text-amber-300 block mb-1">Nombre del Gladiador</label>
-            <input id="hero-name-input" type="text" value="Maximus" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-amber-400 outline-none" />
-          </div>
-
-          <div>
-            <label class="text-xs font-bold uppercase tracking-wider text-amber-300 block mb-1">Clase de Combate</label>
-            <div class="grid grid-cols-3 gap-2" id="class-selector">
-              <button data-class="barbarian" class="class-btn bg-amber-900/50 border-2 border-amber-400 rounded p-2 text-xs font-bold text-center">🪓 Bárbaro</button>
-              <button data-class="warrior" class="class-btn bg-slate-900 border border-slate-700 rounded p-2 text-xs font-bold text-center">🛡️ Mirmillón</button>
-              <button data-class="samurai" class="class-btn bg-slate-900 border border-slate-700 rounded p-2 text-xs font-bold text-center">⚔️ Samurái</button>
-              <button data-class="mage" class="class-btn bg-slate-900 border border-slate-700 rounded p-2 text-xs font-bold text-center">🔥 Evocador</button>
-              <button data-class="warlock" class="class-btn bg-slate-900 border border-slate-700 rounded p-2 text-xs font-bold text-center">💀 Brujo Vil</button>
-            </div>
-          </div>
-
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="text-xs font-bold uppercase tracking-wider text-amber-300 block mb-1">Género</label>
-              <select id="gender-select" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-2 text-xs">
-                <option value="male">Masculino</option>
-                <option value="female">Femenino</option>
-              </select>
-            </div>
-            <div>
-              <label class="text-xs font-bold uppercase tracking-wider text-amber-300 block mb-1">Yelmo / Estilo</label>
-              <select id="hair-select" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-2 text-xs">
-                <option value="crusader">Yelmo Romano de Gala</option>
-                <option value="horns">Yelmo Cornudo</option>
-                <option value="kabuto">Kabuto Oriental</option>
-                <option value="crown">Corona Imperial</option>
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label class="text-xs font-bold uppercase tracking-wider text-amber-300 block mb-1">Tinte de Armadura</label>
-            <div class="flex gap-3" id="tint-selector">
-              <button data-color="#f59e0b" class="w-8 h-8 rounded-full bg-amber-500 border-2 border-white"></button>
-              <button data-color="#3b82f6" class="w-8 h-8 rounded-full bg-blue-500 border border-slate-400"></button>
-              <button data-color="#dc2626" class="w-8 h-8 rounded-full bg-red-600 border border-slate-400"></button>
-              <button data-color="#a855f7" class="w-8 h-8 rounded-full bg-purple-500 border border-slate-400"></button>
-              <button data-color="#10b981" class="w-8 h-8 rounded-full bg-emerald-500 border border-slate-400"></button>
-            </div>
-          </div>
-        </div>
-
-        <div class="flex flex-col justify-between bg-slate-900/80 border border-slate-800 rounded-lg p-4">
-          <div>
-            <label class="text-xs font-bold uppercase tracking-wider text-amber-300 block mb-2">Naturaleza del Gladiador</label>
-            <div class="space-y-2" id="nature-selector">
-              <div data-nature="valiente" class="nature-card cursor-pointer p-2.5 rounded border-2 border-amber-400 bg-amber-950/30">
-                <div class="flex justify-between text-xs font-bold text-amber-300"><span>🦁 Valiente</span><span>+20% Crítico / -15% Defensa</span></div>
-              </div>
-              <div data-nature="feroz" class="nature-card cursor-pointer p-2.5 rounded border border-slate-700 bg-slate-900">
-                <div class="flex justify-between text-xs font-bold text-red-400"><span>🩸 Sanguinario</span><span>+25% Daño / -18% Vida Máx</span></div>
-              </div>
-              <div data-nature="coloso" class="nature-card cursor-pointer p-2.5 rounded border border-slate-700 bg-slate-900">
-                <div class="flex justify-between text-xs font-bold text-cyan-300"><span>🏔️ Colosal</span><span>+30% Defensa / -15% Velocidad</span></div>
-              </div>
-            </div>
-          </div>
-
-          <button id="start-campaign-btn" class="wow-btn w-full py-3 rounded-lg font-cinzel font-black text-base text-amber-100 uppercase tracking-wider mt-4">
-            ⚔️ Ingresar al Anfiteatro
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL DE VICTORIA / DERROTA -->
-  <div id="battle-result-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
-    <div id="result-card" class="wow-panel modal-animate rounded-2xl max-w-lg w-full p-6 border-2 border-amber-400 text-center space-y-4">
-      <div id="result-badge" class="inline-block px-4 py-1 rounded-full text-xs font-black uppercase tracking-widest bg-emerald-900/90 text-emerald-200 border border-emerald-400">
-        Combate Finalizado
-      </div>
-      <h2 id="result-title" class="font-cinzel text-3xl md:text-4xl font-black text-amber-400 drop-shadow">
-        🏆 ¡VICTORIA EN LA ARENA!
-      </h2>
-      <p id="result-subtitle" class="text-sm text-slate-300">El público aclama tu nombre en el Anfiteatro.</p>
-
-      <div id="result-rewards-box" class="bg-slate-950/90 border border-slate-800 rounded-xl p-4 text-left space-y-2.5"></div>
-
-      <div id="boss-loot-box" class="hidden bg-gradient-to-r from-purple-950/90 via-indigo-950/90 to-amber-950/90 border-2 border-purple-400 rounded-xl p-3 text-left">
-        <div class="text-xs font-black uppercase tracking-wider text-purple-300 mb-1">🎁 ¡COFRE DE JEFE DESBLOQUEADO!</div>
-        <div id="boss-loot-item" class="text-sm font-bold text-amber-300">Arma Épica de Campeón</div>
-      </div>
-
-      <div class="flex gap-3 pt-2">
-        <button id="result-continue-btn" class="wow-btn flex-1 py-3 rounded-xl font-cinzel font-black text-base text-white uppercase tracking-wider">
-          ⚔️ Siguiente Rival
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- CABECERA DE JUEGO -->
-  <header class="wow-panel rounded-xl p-3 mb-2 flex flex-wrap items-center justify-between gap-3">
+  <!-- CABECERA -->
+  <header class="wow-panel rounded-xl p-3 mb-3 flex flex-wrap items-center justify-between gap-3">
     <div class="flex items-center gap-3">
-      <div class="bg-amber-950/80 border border-amber-500/60 px-3 py-1.5 rounded-lg text-center">
-        <div class="text-[10px] uppercase tracking-widest text-amber-300">Nivel Arena</div>
-        <div id="stage-indicator" class="font-cinzel font-black text-lg text-white">1 / 20</div>
+      <div class="bg-amber-950/80 border border-amber-500/60 px-3 py-1 rounded-lg text-center">
+        <div class="text-[9px] uppercase tracking-widest text-amber-300">Fase</div>
+        <div id="stage-indicator" class="font-cinzel font-bold text-base text-white">1 / 10</div>
       </div>
       <div>
-        <h1 id="match-title" class="font-cinzel font-extrabold text-base md:text-lg text-amber-400">Fase 1: Kargath el Gladiador</h1>
-        <p id="anim-debug" class="text-[11px] text-emerald-400 font-mono">Amphitheatrum Flavium | Motor 3D Activo</p>
+        <h1 id="match-title" class="font-cinzel font-bold text-base text-amber-400">Duelo 1: Gladiador Novato</h1>
+        <p class="text-[10px] text-emerald-400 font-mono">Motor 3D Three.js Activo</p>
       </div>
     </div>
-
-    <div class="flex items-center gap-3 flex-wrap">
-      <div class="bg-slate-900/90 border border-slate-700 px-3 py-1.5 rounded-lg flex items-center gap-3 text-xs">
-        <div><span class="text-slate-400">Poder:</span><span id="hero-power-val" class="font-bold text-emerald-400 ml-1">145</span></div>
-        <span class="text-slate-600">VS</span>
-        <div><span class="text-slate-400">Rival:</span><span id="enemy-power-val" class="font-bold text-red-400 ml-1">160</span></div>
-      </div>
-
-      <div class="flex items-center gap-2 bg-amber-950/40 border border-amber-700/50 px-3 py-1.5 rounded-lg">
-        <span class="text-amber-400 font-bold text-sm">🪙 <span id="gold-display">250</span></span>
-        <span class="text-slate-500">|</span>
-        <span class="text-purple-300 font-bold text-xs">Nv. <span id="hero-lvl-display">1</span></span>
-      </div>
-
-      <button id="open-customizer-btn" class="bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/40 px-2.5 py-1.5 rounded text-xs font-semibold">
-        🎨 Personalizar
-      </button>
+    <div class="flex items-center gap-2 bg-amber-950/50 border border-amber-700/50 px-3 py-1.5 rounded-lg text-xs">
+      <span class="text-amber-400 font-bold">🪙 <span id="gold-display">250</span></span>
+      <span class="text-slate-500">|</span>
+      <span class="text-purple-300 font-bold">Nivel <span id="hero-lvl-display">1</span></span>
     </div>
   </header>
 
-  <!-- ARENA 3D -->
-  <main class="relative wow-panel rounded-xl overflow-hidden flex-1 min-h-[390px] md:min-h-[450px] flex flex-col justify-between">
-    <div class="relative z-20 grid grid-cols-2 gap-4 p-3 md:p-4 bg-gradient-to-b from-black/85 via-black/45 to-transparent">
-      
+  <!-- ARENA 3D Y BARRAS -->
+  <main class="relative wow-panel rounded-xl overflow-hidden flex-1 min-h-[380px] flex flex-col justify-between mb-3">
+    
+    <div class="relative z-20 grid grid-cols-2 gap-3 p-3 bg-gradient-to-b from-black/80 to-transparent">
       <!-- HÉROE -->
-      <div class="space-y-1.5">
-        <div class="flex justify-between items-baseline">
-          <div>
-            <span id="hud-hero-name" class="font-cinzel font-black text-sm md:text-base text-amber-300">Maximus</span>
-            <span id="hud-hero-class" class="text-[11px] text-slate-300 ml-1">(Bárbaro)</span>
-          </div>
-          <span id="hud-hero-hp-text" class="text-xs font-bold text-emerald-300">700 / 700 HP</span>
+      <div class="space-y-1">
+        <div class="flex justify-between items-baseline text-xs">
+          <span class="font-cinzel font-bold text-amber-300">Maximus (Bárbaro)</span>
+          <span id="hud-hero-hp" class="font-bold text-emerald-300">700 / 700 HP</span>
         </div>
-        <div class="w-full h-4 bg-slate-950 rounded-full overflow-hidden border border-slate-700 p-0.5">
-          <div id="hud-hero-hp-bar" class="h-full bg-gradient-to-r from-emerald-600 to-green-400 rounded-full transition-all duration-200" style="width: 100%"></div>
-        </div>
-        <div class="flex items-center gap-2">
-          <span class="text-[10px] font-bold uppercase text-amber-400 w-16">Ultimate</span>
-          <div class="flex-1 h-2.5 bg-slate-950 rounded-full overflow-hidden border border-amber-900/60">
-            <div id="hud-hero-ult-bar" class="h-full bg-gradient-to-r from-amber-600 via-yellow-400 to-white transition-all duration-150" style="width: 0%"></div>
-          </div>
-        </div>
-        <div id="hero-cast-wrap" class="hidden mt-1 bg-amber-950/90 border border-amber-400 rounded px-2 py-1">
-          <div class="flex justify-between text-[10px] font-bold text-amber-200">
-            <span id="hero-cast-name">⚡ CANALIZANDO ULTIMATE...</span>
-            <span id="hero-cast-time">1.4s</span>
-          </div>
-          <div class="w-full h-1.5 bg-black rounded overflow-hidden mt-0.5">
-            <div id="hero-cast-bar" class="h-full bg-amber-400" style="width:0%"></div>
-          </div>
+        <div class="w-full h-3 bg-slate-950 rounded-full overflow-hidden border border-slate-700 p-0.5">
+          <div id="hero-hp-bar" class="h-full bg-gradient-to-r from-emerald-600 to-green-400 rounded-full transition-all" style="width: 100%"></div>
         </div>
       </div>
 
       <!-- ENEMIGO -->
-      <div class="space-y-1.5 text-right">
-        <div class="flex justify-between items-baseline">
-          <span id="hud-enemy-hp-text" class="text-xs font-bold text-red-300">720 / 720 HP</span>
-          <div>
-            <span id="hud-enemy-badge" class="bg-red-900/80 border border-red-500 text-red-200 text-[10px] px-1.5 py-0.5 rounded font-bold mr-1">ÉLITE</span>
-            <span id="hud-enemy-name" class="font-cinzel font-black text-sm md:text-base text-red-400">Kargath</span>
-          </div>
+      <div class="space-y-1 text-right">
+        <div class="flex justify-between items-baseline text-xs">
+          <span id="hud-enemy-hp" class="font-bold text-red-300">700 / 700 HP</span>
+          <span id="hud-enemy-name" class="font-cinzel font-bold text-red-400">Kargath</span>
         </div>
-        <div class="w-full h-4 bg-slate-950 rounded-full overflow-hidden border border-slate-700 p-0.5">
-          <div id="hud-enemy-hp-bar" class="h-full bg-gradient-to-l from-red-600 to-rose-400 rounded-full transition-all duration-200 ml-auto" style="width: 100%"></div>
-        </div>
-        <div class="flex items-center gap-2">
-          <div class="flex-1 h-2.5 bg-slate-950 rounded-full overflow-hidden border border-red-900/60">
-            <div id="hud-enemy-ult-bar" class="h-full bg-gradient-to-l from-purple-600 via-fuchsia-500 to-pink-300 transition-all duration-150 ml-auto" style="width: 0%"></div>
-          </div>
-          <span class="text-[10px] font-bold uppercase text-fuchsia-400 w-16">Amenaza</span>
-        </div>
-        <div id="enemy-cast-wrap" class="hidden mt-1 bg-red-950/95 border-2 border-red-500 rounded px-2 py-1 animate-pulse">
-          <div class="flex justify-between text-[11px] font-black text-red-200">
-            <span id="enemy-cast-name">⚠️ ¡GOLPE LETAL! [PULSA 1 INTERRUMPIR]</span>
-            <span id="enemy-cast-time">1.6s</span>
-          </div>
-          <div class="w-full h-2 bg-black rounded overflow-hidden mt-0.5">
-            <div id="enemy-cast-bar" class="h-full bg-gradient-to-r from-yellow-400 to-red-600" style="width:0%"></div>
-          </div>
+        <div class="w-full h-3 bg-slate-950 rounded-full overflow-hidden border border-slate-700 p-0.5">
+          <div id="enemy-hp-bar" class="h-full bg-gradient-to-l from-red-600 to-rose-400 rounded-full transition-all ml-auto" style="width: 100%"></div>
         </div>
       </div>
     </div>
 
-    <div id="arena-viewport" class="relative flex-1 w-full h-full min-h-[260px]">
+    <!-- CANVAS 3D -->
+    <div id="arena-viewport" class="relative flex-1 w-full h-full min-h-[240px]">
       <canvas id="three-canvas" class="absolute inset-0 w-full h-full block"></canvas>
       <div id="floating-texts" class="absolute inset-0 pointer-events-none overflow-hidden"></div>
     </div>
 
-    <div class="relative z-20 bg-slate-950/90 border-t border-amber-900/60 px-3 py-2.5 flex flex-wrap items-center justify-between gap-2">
-      <div class="flex items-center gap-2 flex-wrap">
-        <button id="skill-interrupt-btn" class="bg-amber-900/80 hover:bg-amber-800 border border-amber-400 text-amber-100 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition">
-          <span class="bg-black/60 px-1.5 py-0.5 rounded text-amber-300 font-mono">[1]</span>
-          <span>🦶 Interrumpir (Patada)</span>
-          <span id="cd-interrupt" class="text-[10px] text-amber-300 ml-1">Listo</span>
-        </button>
-        <button id="skill-shield-btn" class="bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-400 text-cyan-100 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition">
-          <span class="bg-black/60 px-1.5 py-0.5 rounded text-cyan-300 font-mono">[2]</span>
-          <span>🛡️ Muro de Escudos (-65%)</span>
-          <span id="cd-shield" class="text-[10px] text-cyan-300 ml-1">Listo</span>
-        </button>
-        <button id="skill-potion-btn" class="bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-400 text-emerald-100 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition">
-          <span class="bg-black/60 px-1.5 py-0.5 rounded text-emerald-300 font-mono">[3]</span>
-          <span>🧪 Poción (+40% HP)</span>
-          <span id="potions-left" class="bg-emerald-800 px-1.5 rounded text-[10px]">2/2</span>
-        </button>
-      </div>
-
-      <div class="flex items-center gap-2">
-        <span id="combat-status-banner" class="text-xs font-bold text-amber-300 mr-2">Listo para el combate</span>
-        <button id="fight-btn" class="wow-btn px-6 py-2 rounded-lg font-cinzel font-black text-sm text-white uppercase tracking-wider">
-          ⚔️ ¡LUCHAR!
-        </button>
-      </div>
+    <!-- BOTÓN DE LUCHA -->
+    <div class="relative z-20 bg-slate-950/90 border-t border-amber-900/60 p-3 flex items-center justify-between">
+      <span id="combat-status" class="text-xs font-bold text-amber-300">Presiona el botón para iniciar el combate automático.</span>
+      <button id="fight-btn" class="wow-btn px-6 py-2 rounded-lg font-cinzel font-black text-sm text-white uppercase tracking-wider">
+        ⚔️ ¡LUCHAR!
+      </button>
     </div>
   </main>
 
-  <!-- PANELES INFERIORES -->
-  <section class="wow-panel rounded-xl p-3 mt-2 grid grid-cols-1 lg:grid-cols-3 gap-4">
-    <div class="bg-slate-900/75 border border-slate-800 rounded-lg p-3 flex flex-col justify-between">
-      <div>
-        <div class="flex justify-between items-center border-b border-slate-800 pb-2 mb-2">
-          <h3 class="font-cinzel font-bold text-sm text-amber-400">🛡️ Atributos y Forja</h3>
-          <span id="stat-points-badge" class="bg-amber-500 text-black text-[11px] font-black px-2 py-0.5 rounded">Puntos: 2</span>
-        </div>
-        <div class="grid grid-cols-3 gap-2 text-center mb-3">
-          <div class="bg-slate-950 p-2 rounded border border-slate-800">
-            <div class="text-[10px] text-slate-400">ATAQUE</div>
-            <div id="stat-atk" class="font-bold text-sm text-red-400">48</div>
-            <button data-stat="atk" class="add-stat-btn mt-1 w-full bg-amber-700 hover:bg-amber-600 text-white text-[10px] font-bold py-0.5 rounded">+6 ATQ</button>
-          </div>
-          <div class="bg-slate-950 p-2 rounded border border-slate-800">
-            <div class="text-[10px] text-slate-400">VIDA MÁX</div>
-            <div id="stat-hp" class="font-bold text-sm text-emerald-400">700</div>
-            <button data-stat="hp" class="add-stat-btn mt-1 w-full bg-amber-700 hover:bg-amber-600 text-white text-[10px] font-bold py-0.5 rounded">+100 HP</button>
-          </div>
-          <div class="bg-slate-950 p-2 rounded border border-slate-800">
-            <div class="text-[10px] text-slate-400">ARMADURA</div>
-            <div id="stat-def" class="font-bold text-sm text-cyan-400">16%</div>
-            <button data-stat="def" class="add-stat-btn mt-1 w-full bg-amber-700 hover:bg-amber-600 text-white text-[10px] font-bold py-0.5 rounded">+4% Def</button>
-          </div>
-        </div>
-      </div>
-      <div id="shop-list" class="space-y-1.5 max-h-28 overflow-y-auto pr-1"></div>
-    </div>
-
-    <div class="bg-slate-900/75 border border-slate-800 rounded-lg p-3 flex flex-col justify-between">
-      <div>
-        <div class="flex justify-between items-center border-b border-slate-800 pb-2 mb-2">
-          <h3 class="font-cinzel font-bold text-sm text-purple-400">🎲 Habilidades Aleatorias (Run)</h3>
-          <button id="roll-skill-btn" class="bg-purple-700 hover:bg-purple-600 text-white text-[11px] font-bold px-2.5 py-1 rounded">Tirar (120 🪙)</button>
-        </div>
-        <div id="skills-container" class="grid grid-cols-2 gap-1.5 max-h-32 overflow-y-auto pr-1 text-xs"></div>
-      </div>
-      <div class="mt-2 pt-2 border-t border-slate-800 flex items-center justify-between text-xs">
-        <div><span class="text-slate-400">Naturaleza:</span><span id="active-nature-label" class="font-bold text-amber-300 ml-1">Valiente</span></div>
-        <button id="reroll-nature-btn" class="bg-slate-800 hover:bg-slate-700 text-amber-300 px-2 py-1 rounded text-[11px]">Mutar (1500 🪙)</button>
-      </div>
-    </div>
-
-    <div class="bg-slate-900/75 border border-slate-800 rounded-lg p-3 flex flex-col justify-between">
-      <div class="flex justify-between items-center border-b border-slate-800 pb-2 mb-2">
-        <h3 class="font-cinzel font-bold text-sm text-amber-400">📜 Registro del Anfiteatro</h3>
-      </div>
-      <div id="combat-log" class="flex-1 h-32 overflow-y-auto space-y-1 text-xs font-mono pr-1 text-slate-300">
-        <div class="text-amber-300">» ¡Bienvenido al Amphitheatrum Flavium! Gasta tus puntos e inicia el combate.</div>
-      </div>
+  <!-- PANEL DE LOGS -->
+  <section class="wow-panel rounded-xl p-3">
+    <h3 class="font-cinzel font-bold text-xs text-amber-400 mb-1 border-b border-slate-800 pb-1">📜 Registro de Combate</h3>
+    <div id="combat-log" class="h-24 overflow-y-auto space-y-1 text-xs font-mono text-slate-300">
+      <div class="text-amber-300">» Simulación 3D lista. Haz clic en "¡LUCHAR!" para comenzar.</div>
     </div>
   </section>
 
-  <!-- MOTOR THREE.JS Y LÓGICA -->
+  <!-- SCRIPT DE JUEGO (THREE.JS) -->
   <script type="module">
     import * as THREE from 'three';
     import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
     import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 
-    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    let audioCtx = null;
-    function playSound(type) {
-      try {
-        if (!audioCtx) audioCtx = new AudioCtx();
-        if (audioCtx.state === 'suspended') audioCtx.resume();
-        const now = audioCtx.currentTime;
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-
-        if (type === 'slash') {
-          osc.type = 'sawtooth';
-          osc.frequency.setValueAtTime(300, now);
-          osc.frequency.exponentialRampToValueAtTime(50, now + 0.15);
-          gain.gain.setValueAtTime(0.2, now);
-          gain.gain.linearRampToValueAtTime(0.01, now + 0.15);
-          osc.start(now); osc.stop(now + 0.15);
-        } else if (type === 'crit') {
-          osc.type = 'triangle';
-          osc.frequency.setValueAtTime(550, now);
-          osc.frequency.exponentialRampToValueAtTime(100, now + 0.25);
-          gain.gain.setValueAtTime(0.3, now);
-          gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
-          osc.start(now); osc.stop(now + 0.25);
-        } else if (type === 'interrupt') {
-          osc.type = 'square';
-          osc.frequency.setValueAtTime(220, now);
-          osc.frequency.setValueAtTime(450, now + 0.06);
-          gain.gain.setValueAtTime(0.25, now);
-          gain.gain.linearRampToValueAtTime(0.01, now + 0.2);
-          osc.start(now); osc.stop(now + 0.2);
-        } else if (type === 'ult') {
-          osc.type = 'sawtooth';
-          osc.frequency.setValueAtTime(100, now);
-          osc.frequency.exponentialRampToValueAtTime(700, now + 0.45);
-          gain.gain.setValueAtTime(0.28, now);
-          gain.gain.linearRampToValueAtTime(0.01, now + 0.45);
-          osc.start(now); osc.stop(now + 0.45);
-        } else if (type === 'victory') {
-          [261.6, 329.6, 392.0, 523.2].forEach((freq, idx) => {
-            const o = audioCtx.createOscillator();
-            const g = audioCtx.createGain();
-            o.type = 'triangle';
-            o.frequency.setValueAtTime(freq, now + idx * 0.11);
-            g.gain.setValueAtTime(0.2, now + idx * 0.11);
-            g.gain.exponentialRampToValueAtTime(0.008, now + idx * 0.11 + 0.35);
-            o.connect(g); g.connect(audioCtx.destination);
-            o.start(now + idx * 0.11); o.stop(now + idx * 0.11 + 0.35);
-          });
-        } else if (type === 'defeat') {
-          [220, 196, 164.8, 130.8].forEach((freq, idx) => {
-            const o = audioCtx.createOscillator();
-            const g = audioCtx.createGain();
-            o.type = 'sawtooth';
-            o.frequency.setValueAtTime(freq, now + idx * 0.16);
-            g.gain.setValueAtTime(0.16, now + idx * 0.16);
-            g.gain.exponentialRampToValueAtTime(0.008, now + idx * 0.16 + 0.38);
-            o.connect(g); g.connect(audioCtx.destination);
-            o.start(now + idx * 0.16); o.stop(now + idx * 0.16 + 0.38);
-          });
-        }
-      } catch (e) {}
-    }
-
-    const CLASSES = {
-      barbarian: { name: 'Bárbaro', hp: 700, atk: 48, def: 16, speed: 1.02, ultName: 'Torbellino Sangriento', weaponType: 'axe', offhand: 'none', defaultHelm: 'horns' },
-      warrior:   { name: 'Mirmillón', hp: 790, atk: 42, def: 28, speed: 0.96, ultName: 'Gladius Imperial', weaponType: 'swordShield', offhand: 'shield', defaultHelm: 'crusader' },
-      samurai:   { name: 'Samurái', hp: 640, atk: 55, def: 15, speed: 1.18, ultName: 'Corte Dimensional Iaido', weaponType: 'katana', offhand: 'none', defaultHelm: 'kabuto' },
-      mage:      { name: 'Evocador', hp: 590, atk: 60, def: 14, speed: 1.06, ultName: 'Lluvia de Meteoros', weaponType: 'staff', offhand: 'orb', defaultHelm: 'crown' },
-      warlock:   { name: 'Brujo Vil', hp: 650, atk: 53, def: 16, speed: 1.02, ultName: 'Hoz del Inframundo', weaponType: 'scythe', offhand: 'orb', defaultHelm: 'horns' }
-    };
-
-    const NATURES = {
-      valiente: { name: 'Valiente', desc: '+20% Crítico / -15% Defensa', critMod: 0.20, atkMod: 1.0, defMod: 0.85 },
-      feroz:    { name: 'Sanguinario', desc: '+25% Daño / -18% Vida Máx', critMod: 0.05, atkMod: 1.25, defMod: 1.0 },
-      coloso:   { name: 'Colosal', desc: '+30% Defensa / -15% Velocidad', critMod: 0.0, atkMod: 1.0, defMod: 1.30 }
-    };
-
-    const SKILL_POOL = [
-      { id: 'lifesteal', name: 'Sed Vampírica', desc: 'Roba 12% del daño como vida por nivel.' },
-      { id: 'critstrike', name: 'Golpe Crítico', desc: '+10% Prob. Crítico por nivel.' },
-      { id: 'thorns', name: 'Espinas', desc: 'Devuelve 20% del daño recibido.' },
-      { id: 'stoneSkin', name: 'Piel de Piedra', desc: '+8% Armadura permanente.' }
-    ];
-
-    const SHOP_WEAPONS = [
-      { id: 'w1', name: 'Gladius de Acero Toledano', bonusAtk: 20, bonusHp: 50, cost: 180, color: 0xf97316, scale: 1.25 },
-      { id: 'w2', name: 'Tridente de Retiario', bonusAtk: 38, bonusHp: 150, cost: 380, color: 0x38bdf8, scale: 1.42 },
-      { id: 'w3', name: 'Espada Consular de Oro', bonusAtk: 62, bonusHp: 280, cost: 720, color: 0xfacc15, scale: 1.55 }
-    ];
-
-    const BOSS_EPIC_DROPS = {
-      5:  { id: 'boss5', name: '🔥 Maza de Cómmodus (Épico)', bonusAtk: 45, bonusHp: 220, color: 0xff4500, scale: 1.5 },
-      10: { id: 'boss10', name: '💚 Guja de la Legión (Épico)', bonusAtk: 78, bonusHp: 380, color: 0x10b981, scale: 1.62 },
-      15: { id: 'boss15', name: '⚡ Cuchilla del Emperador (Legendario)', bonusAtk: 115, bonusHp: 620, color: 0xa855f7, scale: 1.75 },
-      20: { id: 'boss20', name: '👑 Tridente Mítico de los Dioses', bonusAtk: 180, bonusHp: 1000, color: 0xfbbf24, scale: 1.9 }
-    };
-
-    const state = {
-      heroName: 'Maximus', heroClass: 'barbarian', gender: 'male', hairStyle: 'crusader',
-      armorColor: '#f59e0b', nature: 'valiente', level: 1, stage: 1, gold: 250, statPoints: 2,
-      baseAtk: 48, baseHp: 700, baseDef: 16, equippedWeapon: null, skills: { lifesteal: 1 },
-      OwnedItems: new Set(), inCombat: false, heroHp: 700, heroMaxHp: 700, heroUlt: 0,
-      heroCasting: null, heroShieldTimer: 0, guaranteedCrit: false, potions: 2,
-      cdInterrupt: 0, cdShield: 0, missedInterrupts: 0, enemy: null, enemyHp: 720,
-      enemyMaxHp: 720, enemyUlt: 0, enemyCasting: null, enemyStunTimer: 0
-    };
-
+    // Configuración de la escena 3D
     const canvas = document.getElementById('three-canvas');
     const viewport = document.getElementById('arena-viewport');
     const scene = new THREE.Scene();
     scene.background = new THREE.Color('#060911');
-    scene.fog = new THREE.FogExp2('#060911', 0.04);
 
-    const camera = new THREE.PerspectiveCamera(39, 16 / 9, 0.1, 100);
-    camera.position.set(0, 2.3, 6.6);
-    camera.lookAt(0, 1.15, 0);
+    const camera = new THREE.PerspectiveCamera(40, 16 / 9, 0.1, 100);
+    camera.position.set(0, 2.2, 6.2);
+    camera.lookAt(0, 1.1, 0);
 
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-    renderer.shadowMap.enabled = true;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.3;
-
-    function resizeRenderer() {
-      const w = viewport.clientWidth || 800;
-      const h = viewport.clientHeight || 360;
-      renderer.setSize(w, h, false);
-      camera.aspect = w / h;
+    function resize() {
+      renderer.setSize(viewport.clientWidth || 800, viewport.clientHeight || 340, false);
+      camera.aspect = (viewport.clientWidth || 800) / (viewport.clientHeight || 340);
       camera.updateProjectionMatrix();
     }
-    window.addEventListener('resize', resizeRenderer);
+    window.addEventListener('resize', resize);
 
-    scene.add(new THREE.HemisphereLight(0xfff7ed, 0x1e293b, 1.35));
-    const dirLight = new THREE.DirectionalLight(0xfffbeb, 2.8);
-    dirLight.position.set(5, 11, 6);
-    dirLight.castShadow = true;
-    scene.add(dirLight);
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x1e293b, 1.4));
+    const dir = new THREE.DirectionalLight(0xfffbeb, 2.5);
+    dir.position.set(4, 10, 5);
+    scene.add(dir);
 
-    // Suelo del Anfiteatro Flavio
-    const floorMesh = new THREE.Mesh(
-      new THREE.CylinderGeometry(7.2, 7.6, 0.4, 48),
-      new THREE.MeshStandardMaterial({ color: 0x222a38, roughness: 0.8 })
+    // Suelo de la Arena
+    const floor = new THREE.Mesh(
+      new THREE.CylinderGeometry(6, 6.4, 0.3, 32),
+      new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.8 })
     );
-    floorMesh.position.y = -0.2;
-    floorMesh.receiveShadow = true;
-    scene.add(floorMesh);
+    floor.position.y = -0.15;
+    scene.add(floor);
 
-    const runeRing = new THREE.Mesh(
-      new THREE.RingGeometry(2.7, 3.0, 48),
-      new THREE.MeshBasicMaterial({ color: 0xf59e0b, side: THREE.DoubleSide, transparent: true, opacity: 0.5 })
-    );
-    runeRing.rotation.x = -Math.PI / 2;
-    runeRing.position.y = 0.01;
-    scene.add(runeRing);
-
-    const gltfLoader = new GLTFLoader();
-    let baseGltfAsset = null;
-    const DEFAULT_GLB_URL = 'https://threejs.org/examples/models/gltf/Soldier.glb';
-
+    let baseGltf = null;
     const fighters = {
-      hero: { root: new THREE.Group(), model: null, mixer: null, actions: {}, currentAction: null, bones: {}, baseX: -1.85, targetX: -1.85, facing: 1, swingPhase: 0, hitFlash: 0 },
-      enemy: { root: new THREE.Group(), model: null, mixer: null, actions: {}, currentAction: null, bones: {}, baseX: 1.85, targetX: 1.85, facing: -1, swingPhase: 0, hitFlash: 0 }
+      hero: { root: new THREE.Group(), x: -1.6, targetX: -1.6, mesh: null },
+      enemy: { root: new THREE.Group(), x: 1.6, targetX: 1.6, mesh: null }
     };
     scene.add(fighters.hero.root);
     scene.add(fighters.enemy.root);
 
-    function findHumanoidBones(rootObject) {
-      const b = { rightHand: null, leftHand: null, head: null, spine: null, leftShoulder: null, rightShoulder: null };
-      rootObject.traverse((node) => {
-        if (node.isBone) {
-          const n = node.name.toLowerCase();
-          if (!b.rightHand && (n.includes('righthand') || n.includes('hand_r'))) b.rightHand = node;
-          if (!b.leftHand && (n.includes('lefthand') || n.includes('hand_l'))) b.leftHand = node;
-          if (!b.head && (n.includes('head') || n.includes('neck'))) b.head = node;
-          if (!b.spine && (n.includes('spine2') || n.includes('chest') || n.includes('spine'))) b.spine = node;
-          if (!b.leftShoulder && (n.includes('leftarm') || n.includes('leftshoulder'))) b.leftShoulder = node;
-          if (!b.rightShoulder && (n.includes('rightarm') || n.includes('rightshoulder'))) b.rightShoulder = node;
+    // Cargar modelo 3D seguro desde CDN público oficial de Three.js
+    const loader = new GLTFLoader();
+    loader.load('https://threejs.org/examples/models/gltf/Soldier.glb', (gltf) => {
+      baseGltf = gltf;
+      document.getElementById('loading-overlay').classList.add('hidden');
+      initFighters();
+      resize();
+    }, undefined, (err) => {
+      document.getElementById('loading-status').textContent = 'Error cargando modelo 3D.';
+    });
+
+    function initFighters() {
+      if (!baseGltf) return;
+
+      // Héroe
+      const hMesh = SkeletonUtils.clone(baseGltf.scene);
+      hMesh.scale.setScalar(1.05);
+      hMesh.rotation.y = Math.PI / 2;
+      hMesh.traverse(c => { if(c.isMesh) c.material = c.material.clone(); });
+      fighters.hero.root.add(hMesh);
+      fighters.hero.root.position.set(fighters.hero.x, 0, 0);
+      fighters.hero.mesh = hMesh;
+
+      // Enemigo
+      const eMesh = SkeletonUtils.clone(baseGltf.scene);
+      eMesh.scale.setScalar(1.05);
+      eMesh.rotation.y = -Math.PI / 2;
+      eMesh.traverse(c => {
+        if(c.isMesh) {
+          c.material = c.material.clone();
+          c.material.color.set('#ef4444'); // Color rojo para el rival
         }
       });
-      return b;
+      fighters.enemy.root.add(eMesh);
+      fighters.enemy.root.position.set(fighters.enemy.x, 0, 0);
+      fighters.enemy.mesh = eMesh;
     }
 
-    function createWeaponMesh(type, colorHex = 0xf59e0b, scaleMultiplier = 1.0) {
-      const group = new THREE.Group();
-      const metalMat = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, metalness: 0.9, roughness: 0.2 });
-      const glowMat = new THREE.MeshStandardMaterial({ color: colorHex, emissive: colorHex, emissiveIntensity: 0.85 });
-      const handleMat = new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.8 });
+    // Lógica del Combate
+    let inCombat = false;
+    let heroHp = 700, enemyHp = 700;
+    let combatTimer = 0;
 
-      const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.68, 8), handleMat);
-      handle.position.y = 0.22;
-      group.add(handle);
-
-      if (type === 'axe') {
-        const head = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.30, 0.045), metalMat);
-        head.position.set(0.14, 0.50, 0);
-        group.add(head);
-      } else {
-        const blade = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.78, 0.028), metalMat);
-        blade.position.y = 0.76;
-        group.add(blade);
-      }
-      group.scale.setScalar(100 * scaleMultiplier);
-      group.rotation.x = Math.PI / 2;
-      return group;
+    function log(msg) {
+      const box = document.getElementById('combat-log');
+      box.innerHTML += `<div>» ${msg}</div>`;
+      box.scrollTop = box.scrollHeight;
     }
 
-    function buildFighterFromGLB(fighterKey, config) {
-      const f = fighters[fighterKey];
-      while (f.root.children.length > 0) f.root.remove(f.root.children[0]);
-
-      const clonedScene = SkeletonUtils.clone(baseGltfAsset.scene);
-      f.model = clonedScene;
-      clonedScene.scale.setScalar(config.isBoss ? 1.3 : 1.08);
-      clonedScene.rotation.y = f.facing === 1 ? -Math.PI / 2 : Math.PI / 2;
-
-      clonedScene.traverse((child) => {
-        if (child.isMesh) {
-          child.castShadow = true;
-          child.receiveShadow = true;
-          child.material = child.material.clone();
-          child.material.color.set(config.tintColor);
-          child.material.metalness = 0.8;
-          child.material.roughness = 0.3;
-        }
-      });
-
-      f.bones = findHumanoidBones(clonedScene);
-      if (f.bones.rightHand) {
-        f.bones.rightHand.add(createWeaponMesh(config.weaponType, config.weaponColor, config.weaponScale));
-      }
-
-      f.root.add(clonedScene);
-      f.root.position.set(f.baseX, 0, 0);
-
-      f.mixer = new THREE.AnimationMixer(clonedScene);
-      f.actions = {};
-      (baseGltfAsset.animations || []).forEach((clip) => {
-        const action = f.mixer.clipAction(clip);
-        if (clip.name.toLowerCase().includes('idle')) f.actions.idle = action;
-        if (clip.name.toLowerCase().includes('run')) f.actions.run = action;
-      });
-      if (!f.actions.idle && baseGltfAsset.animations[0]) f.actions.idle = f.mixer.clipAction(baseGltfAsset.animations[0]);
-      if (!f.actions.run && baseGltfAsset.animations[1]) f.actions.run = f.mixer.clipAction(baseGltfAsset.animations[1]);
-      playFighterAnimation(fighterKey, 'idle', 0.1);
+    function spawnPop(text, isHero) {
+      const pop = document.createElement('div');
+      pop.className = `dmg-popup ${isHero ? 'text-red-400' : 'text-amber-300'} text-lg`;
+      pop.style.left = isHero ? '28%' : '68%';
+      pop.style.top = '40%';
+      pop.textContent = text;
+      document.getElementById('floating-texts').appendChild(pop);
+      setTimeout(() => pop.remove(), 900);
     }
-
-    function playFighterAnimation(fighterKey, animName, fadeDuration = 0.16) {
-      const f = fighters[fighterKey];
-      if (!f.mixer) return;
-      const nextAction = f.actions[animName] || f.actions.idle;
-      if (!nextAction || f.currentAction === nextAction) return;
-      nextAction.reset().play();
-      if (f.currentAction) f.currentAction.crossFadeTo(nextAction, fadeDuration, true);
-      f.currentAction = nextAction;
-    }
-
-    function triggerSkeletalAttack(fighterKey) {
-      const f = fighters[fighterKey];
-      f.swingPhase = 1.0;
-      playFighterAnimation(fighterKey, 'run', 0.08);
-      f.targetX = f.facing === 1 ? 0.65 : -0.65;
-      setTimeout(() => {
-        playFighterAnimation(fighterKey, 'idle', 0.15);
-        f.targetX = f.baseX;
-      }, 390);
-    }
-
-    const vfxParticles = [];
-    function spawnImpactParticles(x, y, colorHex = 0xfbbf24, count = 18) {
-      for (let i = 0; i < count; i++) {
-        const p = new THREE.Mesh(new THREE.OctahedronGeometry(0.06, 0), new THREE.MeshBasicMaterial({ color: colorHex }));
-        p.position.set(x, y, 0);
-        scene.add(p);
-        vfxParticles.push({ mesh: p, vel: new THREE.Vector3((Math.random() - 0.5) * 5, Math.random() * 4 + 1, 0), life: 0.5 });
-      }
-    }
-
-    function loadGLBModel(url, isCustom = false) {
-      const overlay = document.getElementById('loading-overlay');
-      const bar = document.getElementById('loading-bar');
-      overlay.classList.remove('hidden');
-
-      gltfLoader.load(url, (gltf) => {
-        baseGltfAsset = gltf;
-        bar.style.width = '100%';
-        setTimeout(() => {
-          overlay.classList.add('hidden');
-          if (!isCustom) {
-            document.getElementById('creation-modal').classList.remove('hidden');
-            document.getElementById('creation-modal').classList.add('flex');
-          }
-          refresh3DFighters();
-          resizeRenderer();
-        }, 250);
-      });
-    }
-
-    document.getElementById('custom-glb-input').addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      loadGLBModel(URL.createObjectURL(file), true);
-    });
-
-    document.getElementById('open-customizer-btn').addEventListener('click', () => {
-      if (state.inCombat) return;
-      document.getElementById('creation-modal').classList.remove('hidden');
-      document.getElementById('creation-modal').classList.add('flex');
-    });
-
-    function refresh3DFighters() {
-      if (!baseGltfAsset) return;
-      const cls = CLASSES[state.heroClass];
-      const wColor = state.equippedWeapon ? state.equippedWeapon.color : 0xf59e0b;
-      const wScale = state.equippedWeapon ? state.equippedWeapon.scale : 1.1;
-
-      buildFighterFromGLB('hero', {
-        gender: state.gender, tintColor: state.armorColor, weaponType: cls.weaponType,
-        weaponColor: wColor, weaponScale: wScale, isBoss: false
-      });
-      setupStageEnemy(state.stage);
-    }
-
-    const ENEMY_NAMES = [
-      'Kargath el Gladiador', 'Retiario Marcus', 'Bestiario Brutal', 'Centurión Cincinato',
-      'JEFE: Emperador Cómmodus', 'Gladiador Mirmillón', 'Asesino Tracio', 'Campeón de la Galia',
-      'Gladiador Esclavo Vindex', 'JEFE: General Severus'
-    ];
-
-    function setupStageEnemy(stageNum) {
-      const isBoss = stageNum % 5 === 0;
-      const scale = Math.pow(1.2, stageNum - 1);
-      const hp = Math.round((isBoss ? 950 : 700) * scale);
-      const atk = Math.round((isBoss ? 58 : 45) * scale);
-      const def = Math.min(50, Math.round(14 + stageNum * 1.5));
-
-      state.enemy = { name: ENEMY_NAMES[(stageNum - 1) % ENEMY_NAMES.length], isBoss, maxHp: hp, atk, def, turnCount: 0 };
-      state.enemyHp = hp; state.enemyMaxHp = hp; state.enemyUlt = 0; state.enemyCasting = null;
-
-      if (baseGltfAsset) {
-        buildFighterFromGLB('enemy', {
-          gender: 'male', tintColor: isBoss ? '#ef4444' : '#7c3aed',
-          weaponType: 'axe', weaponColor: 0xa855f7, weaponScale: isBoss ? 1.5 : 1.1, isBoss
-        });
-      }
-      updateAllHUD();
-    }
-
-    function getHeroComputedStats() {
-      const nat = NATURES[state.nature];
-      const wepAtk = state.equippedWeapon ? state.equippedWeapon.bonusAtk : 0;
-      const wepHp = state.equippedWeapon ? state.equippedWeapon.bonusHp : 0;
-      const stoneSkinBonus = (state.skills.stoneSkin || 0) * 8;
-
-      const atk = Math.round((state.baseAtk + wepAtk) * nat.atkMod);
-      const maxHp = Math.round((state.baseHp + wepHp));
-      const def = Math.min(70, Math.round((state.baseDef + stoneSkinBonus) * nat.defMod));
-      const critChance = Math.max(0.05, 0.15 + nat.critMod + (state.skills.critstrike || 0) * 0.10);
-      const power = Math.round(atk * 2.1 + maxHp * 0.09 + def * 2.2);
-
-      return { atk, maxHp, def, critChance, power };
-    }
-
-    function updateAllHUD() {
-      const hStats = getHeroComputedStats();
-      if (!state.inCombat) { state.heroMaxHp = hStats.maxHp; state.heroHp = hStats.maxHp; }
-
-      document.getElementById('stage-indicator').textContent = `${state.stage} / 20`;
-      document.getElementById('match-title').textContent = `Fase ${state.stage}: ${state.enemy ? state.enemy.name : ''}`;
-      document.getElementById('gold-display').textContent = state.gold;
-      document.getElementById('hero-lvl-display').textContent = state.level;
-      document.getElementById('stat-points-badge').textContent = `Puntos: ${state.statPoints}`;
-      document.getElementById('hero-power-val').textContent = hStats.power;
-      document.getElementById('enemy-power-val').textContent = state.enemy ? Math.round(state.enemy.atk * 2.1 + state.enemy.maxHp * 0.09) : 150;
-
-      document.getElementById('stat-atk').textContent = hStats.atk;
-      document.getElementById('stat-hp').textContent = hStats.maxHp;
-      document.getElementById('stat-def').textContent = `${hStats.def}%`;
-
-      document.getElementById('hud-hero-name').textContent = state.heroName;
-      document.getElementById('hud-hero-hp-text').textContent = `${Math.max(0, Math.round(state.heroHp))} / ${state.heroMaxHp} HP`;
-      document.getElementById('hud-hero-hp-bar').style.width = `${Math.max(0, (state.heroHp / state.heroMaxHp) * 100)}%`;
-      document.getElementById('hud-hero-ult-bar').style.width = `${Math.min(100, state.heroUlt)}%`;
-
-      if (state.enemy) {
-        document.getElementById('hud-enemy-name').textContent = state.enemy.name;
-        document.getElementById('hud-enemy-hp-text').textContent = `${Math.max(0, Math.round(state.enemyHp))} / ${state.enemyMaxHp} HP`;
-        document.getElementById('hud-enemy-hp-bar').style.width = `${Math.max(0, (state.enemyHp / state.enemyMaxHp) * 100)}%`;
-        document.getElementById('hud-enemy-ult-bar').style.width = `${Math.min(100, state.enemyUlt)}%`;
-      }
-
-      renderShopList();
-      renderSkillsList();
-    }
-
-    function renderShopList() {
-      const container = document.getElementById('shop-list');
-      container.innerHTML = '';
-      SHOP_WEAPONS.forEach((w) => {
-        const owned = state.OwnedItems.has(w.id);
-        const equipped = state.equippedWeapon && state.equippedWeapon.id === w.id;
-        const row = document.createElement('div');
-        row.className = 'flex items-center justify-between bg-slate-950 px-2.5 py-1.5 rounded border border-slate-800 text-xs';
-        row.innerHTML = `
-          <div><span class="font-bold text-amber-300">${w.name}</span><span class="text-emerald-400 ml-1">+${w.bonusAtk} ATQ</span></div>
-          <button class="px-2 py-0.5 rounded font-bold text-[11px] ${equipped ? 'bg-emerald-800 text-white' : owned ? 'bg-blue-700 text-white' : 'bg-amber-600 text-black'}">
-            ${equipped ? 'Equipado' : owned ? 'Equipar' : `${w.cost} 🪙`}
-          </button>
-        `;
-        row.querySelector('button').addEventListener('click', () => {
-          if (equipped) return;
-          if (!owned) {
-            if (state.gold < w.cost) return;
-            state.gold -= w.cost;
-            state.OwnedItems.add(w.id);
-          }
-          state.equippedWeapon = w;
-          refresh3DFighters();
-          updateAllHUD();
-        });
-        container.appendChild(row);
-      });
-    }
-
-    function renderSkillsList() {
-      const container = document.getElementById('skills-container');
-      container.innerHTML = '';
-      Object.entries(state.skills).forEach(([id, lvl]) => {
-        const sk = SKILL_POOL.find(s => s.id === id);
-        if (!sk) return;
-        const badge = document.createElement('div');
-        badge.className = 'bg-slate-950 border border-purple-900/60 rounded p-1.5 text-xs';
-        badge.innerHTML = `<div class="flex justify-between font-bold text-purple-300"><span>${sk.name}</span><span>Nv.${lvl}</span></div>`;
-        container.appendChild(badge);
-      });
-    }
-
-    function spawnFloatingText(text, isHeroTarget, colorClass = 'text-white') {
-      const container = document.getElementById('floating-texts');
-      const el = document.createElement('div');
-      el.className = `dmg-popup ${colorClass} text-xl`;
-      el.style.left = isHeroTarget ? '24%' : '70%';
-      el.style.top = '36%';
-      el.textContent = text;
-      container.appendChild(el);
-      setTimeout(() => el.remove(), 1000);
-    }
-
-    function logCombat(msg) {
-      const log = document.getElementById('combat-log');
-      const entry = document.createElement('div');
-      entry.className = 'text-slate-300';
-      entry.textContent = `» ${msg}`;
-      log.appendChild(entry);
-      log.scrollTop = log.scrollHeight;
-    }
-
-    function showBattleResultModal(isVictory, details) {
-      const modal = document.getElementById('battle-result-modal');
-      modal.classList.remove('hidden');
-      modal.classList.add('flex');
-      if (isVictory) {
-        playSound('victory');
-        document.getElementById('result-title').textContent = '🏆 ¡VICTORIA EN EL COLISEO!';
-        document.getElementById('result-rewards-box').innerHTML = `Oro ganado: +${details.goldWon} 🪙`;
-      } else {
-        playSound('defeat');
-        document.getElementById('result-title').textContent = '💀 HAS SIDO DERROTADO';
-        document.getElementById('result-rewards-box').innerHTML = 'Mejora tus atributos o usa [1] Interrumpir.';
-      }
-    }
-
-    document.getElementById('result-continue-btn').addEventListener('click', () => {
-      document.getElementById('battle-result-modal').classList.add('hidden');
-      document.getElementById('battle-result-modal').classList.remove('flex');
-      refresh3DFighters();
-      updateAllHUD();
-    });
-
-    let heroAttackTimer = 0;
-    let enemyAttackTimer = 0;
-
-    function updateCombatStep(dt) {
-      if (!state.inCombat) return;
-      if (state.cdInterrupt > 0) state.cdInterrupt = Math.max(0, state.cdInterrupt - dt);
-      if (state.cdShield > 0) state.cdShield = Math.max(0, state.cdShield - dt);
-      if (state.heroShieldTimer > 0) state.heroShieldTimer = Math.max(0, state.heroShieldTimer - dt);
-      if (state.enemyStunTimer > 0) state.enemyStunTimer = Math.max(0, state.enemyStunTimer - dt);
-
-      const hStats = getHeroComputedStats();
-
-      // Héroe Ataca
-      heroAttackTimer += dt;
-      if (heroAttackTimer >= 1.4) {
-        heroAttackTimer = 0;
-        triggerSkeletalAttack('hero');
-        const isCrit = Math.random() < hStats.critChance;
-        const dmg = Math.max(10, Math.round(hStats.atk * (isCrit ? 1.8 : 1.0) * (1 - state.enemy.def / 100)));
-        state.enemyHp -= dmg;
-        state.heroUlt = Math.min(100, state.heroUlt + 30);
-        playSound(isCrit ? 'crit' : 'slash');
-        spawnFloatingText(isCrit ? `💥 ${dmg}` : `-${dmg}`, false, isCrit ? 'text-yellow-300' : 'text-white');
-        checkBattleEnd();
-      }
-
-      // Enemigo Ataca
-      if (!state.inCombat || state.enemyStunTimer > 0) return;
-      enemyAttackTimer += dt;
-      if (enemyAttackTimer >= 1.6) {
-        enemyAttackTimer = 0;
-        triggerSkeletalAttack('enemy');
-        let dmg = Math.max(10, Math.round(state.enemy.atk * (1 - hStats.def / 100)));
-        if (state.heroShieldTimer > 0) dmg = Math.round(dmg * 0.35);
-        state.heroHp -= dmg;
-        playSound('slash');
-        spawnFloatingText(`-${dmg}`, true, 'text-red-400');
-        checkBattleEnd();
-      }
-      updateAllHUD();
-    }
-
-    function checkBattleEnd() {
-      if (state.enemyHp <= 0) {
-        state.inCombat = false;
-        state.gold += 200;
-        state.level++;
-        state.statPoints += 2;
-        if (state.stage < 20) state.stage++;
-        showBattleResultModal(true, { goldWon: 200 });
-      } else if (state.heroHp <= 0) {
-        state.inCombat = false;
-        showBattleResultModal(false, {});
-      }
-      updateAllHUD();
-    }
-
-    document.getElementById('skill-interrupt-btn').addEventListener('click', () => {
-      if (!state.inCombat) return;
-      playSound('interrupt');
-      state.enemyStunTimer = 1.5;
-      spawnFloatingText('🦶 ¡Interrumpido!', false, 'text-amber-300');
-    });
-
-    document.getElementById('skill-shield-btn').addEventListener('click', () => {
-      if (!state.inCombat) return;
-      state.heroShieldTimer = 3.0;
-      spawnFloatingText('🛡️ Escudo', true, 'text-cyan-300');
-    });
-
-    document.getElementById('skill-potion-btn').addEventListener('click', () => {
-      if (!state.inCombat || state.potions <= 0) return;
-      state.potions--;
-      state.heroHp = Math.min(state.heroMaxHp, state.heroHp + 250);
-      updateAllHUD();
-    });
 
     document.getElementById('fight-btn').addEventListener('click', () => {
-      if (state.inCombat) return;
-      state.heroHp = state.heroMaxHp;
-      state.enemyHp = state.enemyMaxHp;
-      state.inCombat = true;
-      logCombat('¡Inicia el combate en el Amphitheatrum Flavium!');
+      if (inCombat) return;
+      inCombat = true;
+      heroHp = 700; enemyHp = 700;
+      document.getElementById('combat-status').textContent = '⚔️ ¡Combate automático en curso!';
+      log('¡Comienza el duelo en el anfiteatro!');
     });
 
-    document.querySelectorAll('.class-btn').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        state.heroClass = btn.dataset.class;
-        const cls = CLASSES[state.heroClass];
-        state.baseAtk = cls.atk; state.baseHp = cls.hp; state.baseDef = cls.def;
-        refresh3DFighters();
-      });
-    });
-
-    document.querySelectorAll('.add-stat-btn').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        if (state.statPoints <= 0) return;
-        state.statPoints--;
-        const st = btn.dataset.stat;
-        if (st === 'atk') state.baseAtk += 6;
-        if (st === 'hp') state.baseHp += 100;
-        if (st === 'def') state.baseDef += 4;
-        updateAllHUD();
-      });
-    });
-
+    // Bucle de animación principal
     const clock = new THREE.Clock();
     function animate() {
       requestAnimationFrame(animate);
-      const dt = Math.min(0.1, clock.getDelta());
-      ['hero', 'enemy'].forEach((key) => {
-        const f = fighters[key];
-        if (f.mixer) f.mixer.update(dt);
-        f.root.position.x = THREE.MathUtils.lerp(f.root.position.x, f.targetX, dt * 11);
-      });
-      updateCombatStep(dt);
+      const dt = clock.getDelta();
+
+      if (inCombat) {
+        combatTimer += dt;
+        if (combatTimer >= 1.5) {
+          combatTimer = 0;
+          // Ataque del héroe
+          const dmgH = Math.floor(Math.random() * 60) + 40;
+          enemyHp = Math.max(0, enemyHp - dmgH);
+          spawnPop(`-${dmgH}`, false);
+          log(`Maximus ataca e inflige ${dmgH} de daño.`);
+
+          // Ataque del enemigo
+          const dmgE = Math.floor(Math.random() * 50) + 30;
+          heroHp = Math.max(0, heroHp - dmgE);
+          spawnPop(`-${dmgE}`, true);
+          log(`Kargath contraataca e inflige ${dmgE} de daño.`);
+
+          // Actualizar barras
+          document.getElementById('hud-hero-hp').textContent = `${heroHp} / 700 HP`;
+          document.getElementById('hero-hp-bar').style.width = `${(heroHp / 700) * 100}%`;
+          document.getElementById('hud-enemy-hp').textContent = `${enemyHp} / 700 HP`;
+          document.getElementById('enemy-hp-bar').style.width = `${(enemyHp / 700) * 100}%`;
+
+          if (enemyHp <= 0) {
+            inCombat = false;
+            log('🏆 ¡Victoria! Has vencido a tu rival.');
+            document.getElementById('combat-status').textContent = '¡Victoria conseguida!';
+          } else if (heroHp <= 0) {
+            inCombat = false;
+            log('💀 Has sido derrotado en la arena.');
+            document.getElementById('combat-status').textContent = 'Derrota - Inténtalo de nuevo';
+          }
+        }
+      }
+
       renderer.render(scene, camera);
     }
 
-    resizeRenderer();
-    loadGLBModel(DEFAULT_GLB_URL);
+    resize();
     animate();
   </script>
 </body>
