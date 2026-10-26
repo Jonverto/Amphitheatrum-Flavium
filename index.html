@@ -1,0 +1,1566 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Azeroth Colosseum: GLTF Skeletal Engine</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800;900&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Import Map para Three.js r160 + GLTFLoader + SkeletonUtils -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #07090e;
+      color: #e2e8f0;
+      overflow-x: hidden;
+      user-select: none;
+    }
+    .font-cinzel { font-family: 'Cinzel', serif; }
+    
+    /* Marcos estilo RPG Fantasía */
+    .wow-panel {
+      background: linear-gradient(180deg, rgba(18, 24, 38, 0.96) 0%, rgba(9, 12, 20, 0.98) 100%);
+      border: 2px solid #785a28;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.85), inset 0 0 15px rgba(120, 90, 40, 0.18);
+    }
+    .wow-btn {
+      background: linear-gradient(180deg, #b45309 0%, #78350f 100%);
+      border: 1px solid #fbbf24;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.3);
+      transition: all 0.15s ease;
+    }
+    .wow-btn:hover:not(:disabled) {
+      filter: brightness(1.2);
+      transform: translateY(-1px);
+    }
+    .wow-btn:disabled {
+      filter: grayscale(0.9);
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    /* Textos flotantes de combate */
+    @keyframes floatDamage {
+      0% { opacity: 1; transform: translateY(0) scale(0.75); }
+      25% { opacity: 1; transform: translateY(-22px) scale(1.18); }
+      100% { opacity: 0; transform: translateY(-65px) scale(0.9); }
+    }
+    .dmg-popup {
+      position: absolute;
+      pointer-events: none;
+      font-family: 'Cinzel', serif;
+      font-weight: 900;
+      text-shadow: 0 3px 8px rgba(0,0,0,0.95);
+      animation: floatDamage 1.05s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      z-index: 40;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between p-2 md:p-4">
+
+  <!-- PANTALLA DE CARGA DE MODELOS GLTF -->
+  <div id="loading-overlay" class="fixed inset-0 z-50 bg-slate-950/95 flex flex-col items-center justify-center p-6">
+    <div class="w-16 h-16 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mb-5"></div>
+    <h1 class="font-cinzel text-2xl md:text-3xl font-black text-amber-400 tracking-wider mb-2">CARGANDO MOTOR ESQUELÉTICO .GLB</h1>
+    <p id="loading-status" class="text-sm text-slate-400 mb-4">Descargando mallas con Skinning y clips de captura de movimiento...</p>
+    <div class="w-72 h-3 bg-slate-800 rounded-full overflow-hidden border border-amber-700/50">
+      <div id="loading-bar" class="h-full bg-gradient-to-r from-amber-600 to-yellow-400 w-1/4 transition-all duration-300"></div>
+    </div>
+  </div>
+
+  <!-- MODAL DE CREACIÓN DE HÉROE (INICIO) -->
+  <div id="creation-modal" class="fixed inset-0 z-40 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="wow-panel rounded-xl max-w-3xl w-full p-6 border-2 border-amber-500/80">
+      <div class="flex items-center justify-between border-b border-amber-900/60 pb-3 mb-5">
+        <div>
+          <h2 class="font-cinzel text-2xl md:text-3xl font-extrabold text-amber-400">FORJA TU CAMPEÓN (.GLB RIG)</h2>
+          <p class="text-xs text-slate-400">Las armas y armaduras se anclan en tiempo real a los huesos <code class="text-amber-300">RightHand</code>, <code class="text-amber-300">LeftHand</code> y <code class="text-amber-300">Head</code> del esqueleto 3D.</p>
+        </div>
+        <label class="cursor-pointer bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/50 px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2">
+          <span>📂 Subir tu .GLB (Mixamo)</span>
+          <input type="file" id="custom-glb-input" accept=".glb,.gltf" class="hidden" />
+        </label>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <!-- Selección de Clase y Apariencia -->
+        <div class="space-y-4">
+          <div>
+            <label class="text-xs font-bold uppercase tracking-wider text-amber-300 block mb-1">Nombre del Gladiador</label>
+            <input id="hero-name-input" type="text" value="Varian" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:border-amber-400 outline-none" />
+          </div>
+
+          <div>
+            <label class="text-xs font-bold uppercase tracking-wider text-amber-300 block mb-1">Clase (Define Arma en Hueso y Ultimate)</label>
+            <div class="grid grid-cols-3 gap-2" id="class-selector">
+              <button data-class="barbarian" class="class-btn bg-amber-900/50 border-2 border-amber-400 rounded p-2 text-xs font-bold text-center">🪓 Bárbaro</button>
+              <button data-class="warrior" class="class-btn bg-slate-900 border border-slate-700 rounded p-2 text-xs font-bold text-center">🛡️ Guerrero</button>
+              <button data-class="samurai" class="class-btn bg-slate-900 border border-slate-700 rounded p-2 text-xs font-bold text-center">⚔️ Samurái</button>
+              <button data-class="mage" class="class-btn bg-slate-900 border border-slate-700 rounded p-2 text-xs font-bold text-center">🔥 Mago</button>
+              <button data-class="warlock" class="class-btn bg-slate-900 border border-slate-700 rounded p-2 text-xs font-bold text-center">💀 Hechicero</button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-xs font-bold uppercase tracking-wider text-amber-300 block mb-1">Complexión / Género</label>
+              <select id="gender-select" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-2 text-xs">
+                <option value="male">Masculino (Robusto)</option>
+                <option value="female">Femenino (Estilizado)</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-xs font-bold uppercase tracking-wider text-amber-300 block mb-1">Yelmo / Cabello en HeadBone</label>
+              <select id="hair-select" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-2 text-xs">
+                <option value="horns">Cuernos de Guerra</option>
+                <option value="crest">Cresta Espartana</option>
+                <option value="crown">Corona Arcana</option>
+                <option value="hood">Capucha Sombría</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="text-xs font-bold uppercase tracking-wider text-amber-300 block mb-1">Tinte Metálico PBR del Material SkinnedMesh</label>
+            <div class="flex gap-3" id="tint-selector">
+              <button data-color="#d97706" class="w-8 h-8 rounded-full bg-amber-600 border-2 border-white"></button>
+              <button data-color="#2563eb" class="w-8 h-8 rounded-full bg-blue-600 border border-slate-400"></button>
+              <button data-color="#dc2626" class="w-8 h-8 rounded-full bg-red-600 border border-slate-400"></button>
+              <button data-color="#7c3aed" class="w-8 h-8 rounded-full bg-purple-600 border border-slate-400"></button>
+              <button data-color="#10b981" class="w-8 h-8 rounded-full bg-emerald-500 border border-slate-400"></button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Selección de Naturaleza (Buff + Debuff Permanente) -->
+        <div class="flex flex-col justify-between bg-slate-900/80 border border-slate-800 rounded-lg p-4">
+          <div>
+            <label class="text-xs font-bold uppercase tracking-wider text-amber-300 block mb-2">Naturaleza Innata (Buff / Debuff Permanente)</label>
+            <div class="space-y-2" id="nature-selector">
+              <div data-nature="valiente" class="nature-card cursor-pointer p-2.5 rounded border-2 border-amber-400 bg-amber-950/30">
+                <div class="flex justify-between text-xs font-bold text-amber-300"><span>🦁 Valiente</span><span>+20% Crítico / -15% Defensa</span></div>
+                <p class="text-[11px] text-slate-400 mt-0.5">Ideal para estallar enemigos antes de que canalicen su Ultimate.</p>
+              </div>
+              <div data-nature="feroz" class="nature-card cursor-pointer p-2.5 rounded border border-slate-700 bg-slate-900">
+                <div class="flex justify-between text-xs font-bold text-red-400"><span>🩸 Sanguinario</span><span>+25% Daño / -18% Vida Máx</span></div>
+                <p class="text-[11px] text-slate-400 mt-0.5">Golpes brutales pero exige usar Escudo e Interrupción sin fallar.</p>
+              </div>
+              <div data-nature="coloso" class="nature-card cursor-pointer p-2.5 rounded border border-slate-700 bg-slate-900">
+                <div class="flex justify-between text-xs font-bold text-cyan-300"><span>🏔️ Colosal</span><span>+30% Defensa / -15% Velocidad</span></div>
+                <p class="text-[11px] text-slate-400 mt-0.5">Resiste golpes pesados de Jefes mientras cargas tu Ultimate.</p>
+              </div>
+            </div>
+          </div>
+
+          <button id="start-campaign-btn" class="wow-btn w-full py-3 rounded-lg font-cinzel font-black text-base text-amber-100 uppercase tracking-wider mt-4">
+            ⚔️ Entrar al Coliseo (Nivel 1/20)
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CABECERA: ESTADO DE CAMPAÑA Y COMPARADOR DE PODER -->
+  <header class="wow-panel rounded-xl p-3 mb-2 flex flex-wrap items-center justify-between gap-3">
+    <div class="flex items-center gap-3">
+      <div class="bg-amber-950/80 border border-amber-500/60 px-3 py-1.5 rounded-lg text-center">
+        <div class="text-[10px] uppercase tracking-widest text-amber-300">Nivel Arena</div>
+        <div id="stage-indicator" class="font-cinzel font-black text-lg text-white">1 / 20</div>
+      </div>
+      <div>
+        <h1 id="match-title" class="font-cinzel font-extrabold text-base md:text-lg text-amber-400">Fase 1: Kargath el Desollador</h1>
+        <p id="anim-debug" class="text-[11px] text-emerald-400 font-mono">Skeletal Rig: Listo | Huesos Activos: 45</p>
+      </div>
+    </div>
+
+    <!-- Comparador directo de Poder e Inventario rápido -->
+    <div class="flex items-center gap-4">
+      <div class="bg-slate-900/90 border border-slate-700 px-3 py-1.5 rounded-lg flex items-center gap-3 text-xs">
+        <div>
+          <span class="text-slate-400">Tu Poder:</span>
+          <span id="hero-power-val" class="font-bold text-emerald-400 ml-1">145</span>
+        </div>
+        <span class="text-slate-600">VS</span>
+        <div>
+          <span class="text-slate-400">Poder Rival:</span>
+          <span id="enemy-power-val" class="font-bold text-red-400 ml-1">160</span>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 bg-amber-950/40 border border-amber-700/50 px-3 py-1.5 rounded-lg">
+        <span class="text-amber-400 font-bold text-sm">🪙 <span id="gold-display">250</span></span>
+        <span class="text-slate-500">|</span>
+        <span class="text-purple-300 font-bold text-xs">Nv. <span id="hero-lvl-display">1</span></span>
+      </div>
+
+      <label class="cursor-pointer bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/40 px-2.5 py-1.5 rounded text-xs font-semibold">
+        📂 Cargar .GLB
+        <input type="file" id="header-glb-input" accept=".glb,.gltf" class="hidden" />
+      </label>
+    </div>
+  </header>
+
+  <!-- ARENA CENTRAL 3D (THREE.JS GLTF SKINNED MESHES + HUD DE COMBATE) -->
+  <main class="relative wow-panel rounded-xl overflow-hidden flex-1 min-h-[390px] md:min-h-[450px] flex flex-col justify-between">
+    
+    <!-- HUD Superior de Barras de Vida, Ultimate y Casteo -->
+    <div class="relative z-20 grid grid-cols-2 gap-4 p-3 md:p-4 bg-gradient-to-b from-black/80 via-black/40 to-transparent">
+      
+      <!-- HÉROE -->
+      <div class="space-y-1.5">
+        <div class="flex justify-between items-baseline">
+          <div>
+            <span id="hud-hero-name" class="font-cinzel font-black text-sm md:text-base text-amber-300">Varian</span>
+            <span id="hud-hero-class" class="text-[11px] text-slate-300 ml-1">(Bárbaro)</span>
+          </div>
+          <span id="hud-hero-hp-text" class="text-xs font-bold text-emerald-300">650 / 650 HP</span>
+        </div>
+        <div class="w-full h-4 bg-slate-950 rounded-full overflow-hidden border border-slate-700 p-0.5">
+          <div id="hud-hero-hp-bar" class="h-full bg-gradient-to-r from-emerald-600 to-green-400 rounded-full transition-all duration-200" style="width: 100%"></div>
+        </div>
+        <!-- Barra de Furia / Ultimate -->
+        <div class="flex items-center gap-2">
+          <span class="text-[10px] font-bold uppercase text-amber-400 w-16">Ultimate</span>
+          <div class="flex-1 h-2.5 bg-slate-950 rounded-full overflow-hidden border border-amber-900/60">
+            <div id="hud-hero-ult-bar" class="h-full bg-gradient-to-r from-amber-600 via-yellow-400 to-white transition-all duration-150" style="width: 0%"></div>
+          </div>
+        </div>
+        <!-- Barra de Casteo Héroe -->
+        <div id="hero-cast-wrap" class="hidden mt-1 bg-amber-950/90 border border-amber-400 rounded px-2 py-1">
+          <div class="flex justify-between text-[10px] font-bold text-amber-200">
+            <span id="hero-cast-name">⚡ CANALIZANDO ULTIMATE...</span>
+            <span id="hero-cast-time">1.4s</span>
+          </div>
+          <div class="w-full h-1.5 bg-black rounded overflow-hidden mt-0.5">
+            <div id="hero-cast-bar" class="h-full bg-amber-400" style="width:0%"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ENEMIGO / BOSS -->
+      <div class="space-y-1.5 text-right">
+        <div class="flex justify-between items-baseline">
+          <span id="hud-enemy-hp-text" class="text-xs font-bold text-red-300">780 / 780 HP</span>
+          <div>
+            <span id="hud-enemy-badge" class="bg-red-900/80 border border-red-500 text-red-200 text-[10px] px-1.5 py-0.5 rounded font-bold mr-1">ÉLITE</span>
+            <span id="hud-enemy-name" class="font-cinzel font-black text-sm md:text-base text-red-400">Kargath</span>
+          </div>
+        </div>
+        <div class="w-full h-4 bg-slate-950 rounded-full overflow-hidden border border-slate-700 p-0.5">
+          <div id="hud-enemy-hp-bar" class="h-full bg-gradient-to-l from-red-600 to-rose-400 rounded-full transition-all duration-200 ml-auto" style="width: 100%"></div>
+        </div>
+        <!-- Barra de Ultimate Enemigo -->
+        <div class="flex items-center gap-2">
+          <div class="flex-1 h-2.5 bg-slate-950 rounded-full overflow-hidden border border-red-900/60">
+            <div id="hud-enemy-ult-bar" class="h-full bg-gradient-to-l from-purple-600 via-fuchsia-500 to-pink-300 transition-all duration-150 ml-auto" style="width: 0%"></div>
+          </div>
+          <span class="text-[10px] font-bold uppercase text-fuchsia-400 w-16">Amenaza</span>
+        </div>
+        <!-- ALERTA DE CASTEO ENEMIGO (INTERRUMPIBLE CON TECLA 1) -->
+        <div id="enemy-cast-wrap" class="hidden mt-1 bg-red-950/95 border-2 border-red-500 rounded px-2 py-1 animate-pulse">
+          <div class="flex justify-between text-[11px] font-black text-red-200">
+            <span id="enemy-cast-name">⚠️ ¡GOLPE LETAL! [PULSA 1 INTERRUMPIR]</span>
+            <span id="enemy-cast-time">1.6s</span>
+          </div>
+          <div class="w-full h-2 bg-black rounded overflow-hidden mt-0.5">
+            <div id="enemy-cast-bar" class="h-full bg-gradient-to-r from-yellow-400 to-red-600" style="width:0%"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Contenedor del Canvas WebGL Three.js y Popups de Daño -->
+    <div id="arena-viewport" class="relative flex-1 w-full h-full min-h-[260px]">
+      <canvas id="three-canvas" class="absolute inset-0 w-full h-full block"></canvas>
+      <div id="floating-texts" class="absolute inset-0 pointer-events-none overflow-hidden"></div>
+    </div>
+
+    <!-- BARRA TÁCTICA INFERIOR DENTRO DE LA ARENA (ANTI-AFK) -->
+    <div class="relative z-20 bg-slate-950/90 border-t border-amber-900/60 px-3 py-2.5 flex flex-wrap items-center justify-between gap-2">
+      <!-- Controles Tácticos Activos -->
+      <div class="flex items-center gap-2">
+        <button id="skill-interrupt-btn" class="bg-amber-900/80 hover:bg-amber-800 border border-amber-400 text-amber-100 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition">
+          <span class="bg-black/60 px-1.5 py-0.5 rounded text-amber-300 font-mono">[1]</span>
+          <span>🦶 Patada Interrumpir</span>
+          <span id="cd-interrupt" class="text-[10px] text-amber-300 ml-1">Listo</span>
+        </button>
+
+        <button id="skill-shield-btn" class="bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-400 text-cyan-100 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition">
+          <span class="bg-black/60 px-1.5 py-0.5 rounded text-cyan-300 font-mono">[2]</span>
+          <span>🛡️ Baluarte (-65% Daño)</span>
+          <span id="cd-shield" class="text-[10px] text-cyan-300 ml-1">Listo</span>
+        </button>
+
+        <button id="skill-potion-btn" class="bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-400 text-emerald-100 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition">
+          <span class="bg-black/60 px-1.5 py-0.5 rounded text-emerald-300 font-mono">[3]</span>
+          <span>🧪 Poción (+40% HP)</span>
+          <span id="potions-left" class="bg-emerald-800 px-1.5 rounded text-[10px]">2/2</span>
+        </button>
+      </div>
+
+      <!-- Controles de Combate y Test de Animación Skeletal -->
+      <div class="flex items-center gap-2">
+        <span id="combat-status-banner" class="text-xs font-bold text-amber-300 mr-2">Preparado para el duelo</span>
+        <button id="test-anim-btn" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 px-2.5 py-1.5 rounded text-xs">
+          🎬 Probar Combo 3D
+        </button>
+        <button id="fight-btn" class="wow-btn px-5 py-1.5 rounded-lg font-cinzel font-black text-sm text-white uppercase tracking-wider">
+          ⚔️ Iniciar Combate
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <!-- PANEL INFERIOR: 3 PESTAÑAS CLARAS (ARMERÍA, RULETA ROGUELIKE DE SINERGIAS Y REGISTRO) -->
+  <section class="wow-panel rounded-xl p-3 mt-2 grid grid-cols-1 lg:grid-cols-3 gap-4">
+    
+    <!-- COLUMNA 1: ATRIBUTOS Y EQUIPAMIENTO (CAMBIA EL ARMA EN EL HUESO 3D) -->
+    <div class="bg-slate-900/75 border border-slate-800 rounded-lg p-3 flex flex-col justify-between">
+      <div>
+        <div class="flex justify-between items-center border-b border-slate-800 pb-2 mb-2">
+          <h3 class="font-cinzel font-bold text-sm text-amber-400">🛡️ Armería y Huesos 3D</h3>
+          <span id="stat-points-badge" class="bg-amber-600 text-black text-[11px] font-black px-2 py-0.5 rounded">Puntos: 2</span>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2 text-center mb-3">
+          <div class="bg-slate-950 p-2 rounded border border-slate-800">
+            <div class="text-[10px] text-slate-400">ATAQUE</div>
+            <div id="stat-atk" class="font-bold text-sm text-red-400">42</div>
+            <button data-stat="atk" class="add-stat-btn mt-1 w-full bg-amber-700 hover:bg-amber-600 text-white text-[10px] font-bold py-0.5 rounded">+5 Daño</button>
+          </div>
+          <div class="bg-slate-950 p-2 rounded border border-slate-800">
+            <div class="text-[10px] text-slate-400">VIDA MÁX</div>
+            <div id="stat-hp" class="font-bold text-sm text-emerald-400">650</div>
+            <button data-stat="hp" class="add-stat-btn mt-1 w-full bg-amber-700 hover:bg-amber-600 text-white text-[10px] font-bold py-0.5 rounded">+95 HP</button>
+          </div>
+          <div class="bg-slate-950 p-2 rounded border border-slate-800">
+            <div class="text-[10px] text-slate-400">ARMADURA</div>
+            <div id="stat-def" class="font-bold text-sm text-cyan-400">18%</div>
+            <button data-stat="def" class="add-stat-btn mt-1 w-full bg-amber-700 hover:bg-amber-600 text-white text-[10px] font-bold py-0.5 rounded">+4% Def</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tienda Rápida de Forja (Actualiza malla en RightHand_Bone) -->
+      <div class="space-y-1.5">
+        <div class="text-[11px] font-bold text-slate-300">Forja del Herrero (Se acopla al hueso de la mano):</div>
+        <div id="shop-list" class="space-y-1.5 max-h-28 overflow-y-auto pr-1"></div>
+      </div>
+    </div>
+
+    <!-- COLUMNA 2: RULETA DE HABILIDADES ALEATORIAS Y SINERGIAS + NATURALEZA -->
+    <div class="bg-slate-900/75 border border-slate-800 rounded-lg p-3 flex flex-col justify-between">
+      <div>
+        <div class="flex justify-between items-center border-b border-slate-800 pb-2 mb-2">
+          <h3 class="font-cinzel font-bold text-sm text-purple-400">🎲 Habilidades (Run Aleatoria)</h3>
+          <button id="roll-skill-btn" class="bg-purple-700 hover:bg-purple-600 text-white text-[11px] font-bold px-2.5 py-1 rounded border border-purple-400">
+            Tirar Ruleta (120 🪙)
+          </button>
+        </div>
+        <div id="skills-container" class="grid grid-cols-2 gap-1.5 max-h-32 overflow-y-auto pr-1 text-xs"></div>
+      </div>
+
+      <div class="mt-2 pt-2 border-t border-slate-800 flex items-center justify-between text-xs">
+        <div>
+          <span class="text-slate-400">Naturaleza:</span>
+          <span id="active-nature-label" class="font-bold text-amber-300 ml-1">Valiente (+20% Crit / -15% Def)</span>
+        </div>
+        <button id="reroll-nature-btn" class="bg-slate-800 hover:bg-slate-700 border border-amber-500/50 text-amber-300 px-2 py-1 rounded text-[11px] font-semibold">
+          Mutación (1500 🪙)
+        </button>
+      </div>
+    </div>
+
+    <!-- COLUMNA 3: CRÓNICA DE COMBATE Y GUÍA ANTI-AFK -->
+    <div class="bg-slate-900/75 border border-slate-800 rounded-lg p-3 flex flex-col justify-between">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-2 mb-2">
+        <h3 class="font-cinzel font-bold text-sm text-amber-400">📜 Registro de Combate</h3>
+        <span class="text-[10px] text-slate-400">Dificultad: Pesadilla Táctica</span>
+      </div>
+      <div id="combat-log" class="flex-1 h-32 overflow-y-auto space-y-1 text-xs font-mono pr-1 text-slate-300">
+        <div class="text-amber-300">» Motor GLTF inicializado. Antes de pelear en el Nivel 1, gasta tus 2 puntos de atributo e interrumpe con [1] el Golpe Demoledor enemigo.</div>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- SCRIPT PRINCIPAL CON THREE.JS + GLTFLOADER + SKELETONUTILS -->
+  <script type="module">
+    import * as THREE from 'three';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
+
+    // ============================================================================
+    // 1. AUDIO SINTETIZADO (WEB AUDIO API) PARA IMPACTOS, CORTES Y ULTIMATES
+    // ============================================================================
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
+    function playSound(type) {
+      try {
+        if (!audioCtx) audioCtx = new AudioCtx();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        if (type === 'slash') {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(290, now);
+          osc.frequency.exponentialRampToValueAtTime(55, now + 0.14);
+          gain.gain.setValueAtTime(0.18, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.14);
+          osc.start(now); osc.stop(now + 0.14);
+        } else if (type === 'crit') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(520, now);
+          osc.frequency.exponentialRampToValueAtTime(110, now + 0.25);
+          gain.gain.setValueAtTime(0.28, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
+          osc.start(now); osc.stop(now + 0.25);
+        } else if (type === 'interrupt') {
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(180, now);
+          osc.frequency.setValueAtTime(420, now + 0.06);
+          gain.gain.setValueAtTime(0.22, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.2);
+          osc.start(now); osc.stop(now + 0.2);
+        } else if (type === 'ult') {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(110, now);
+          osc.frequency.exponentialRampToValueAtTime(640, now + 0.45);
+          gain.gain.setValueAtTime(0.25, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.45);
+          osc.start(now); osc.stop(now + 0.45);
+        }
+      } catch (e) {}
+    }
+
+    // ============================================================================
+    // 2. DATOS DE CLASES, NATURALEZAS, TIENDA Y 20 NIVELES PESADILLA
+    // ============================================================================
+    const CLASSES = {
+      barbarian: { name: 'Bárbaro', hp: 680, atk: 46, def: 16, speed: 1.0, ultName: 'Torbellino Sangriento', weaponType: 'axe' },
+      warrior:   { name: 'Guerrero', hp: 760, atk: 39, def: 26, speed: 0.95, ultName: 'Espada del Olimpo', weaponType: 'swordShield' },
+      samurai:   { name: 'Samurái', hp: 610, atk: 52, def: 14, speed: 1.18, ultName: 'Corte Dimensional Iaido', weaponType: 'katana' },
+      mage:      { name: 'Mago', hp: 560, atk: 58, def: 12, speed: 1.05, ultName: 'Lluvia de Meteoros', weaponType: 'staff' },
+      warlock:   { name: 'Hechicero', hp: 620, atk: 50, def: 15, speed: 1.0, ultName: 'Pilar de Fuego Vil', weaponType: 'scythe' }
+    };
+
+    const NATURES = {
+      valiente: { name: 'Valiente', desc: '+20% Crítico / -15% Defensa', critMod: 0.20, atkMod: 1.0, defMod: 0.85, hpMod: 1.0, spdMod: 1.0 },
+      feroz:    { name: 'Sanguinario', desc: '+25% Daño / -18% Vida Máx', critMod: 0.05, atkMod: 1.25, defMod: 1.0, hpMod: 0.82, spdMod: 1.05 },
+      coloso:   { name: 'Colosal', desc: '+30% Defensa / -15% Velocidad', critMod: 0.0, atkMod: 1.0, defMod: 1.30, hpMod: 1.15, spdMod: 0.85 }
+    };
+
+    const SKILL_POOL = [
+      { id: 'lifesteal', name: 'Sed de Sangre', type: 'ofensiva', desc: 'Roba 12% del daño como salud por nivel.' },
+      { id: 'critstrike', name: 'Furia Letal', type: 'ofensiva', desc: '+10% Prob. Crítico y +25% daño crítico.' },
+      { id: 'thorns', name: 'Coraza Espinosa', type: 'defensiva', desc: 'Refleja 18% del daño recibido al agresor.' },
+      { id: 'stoneSkin', name: 'Piel de Granito', type: 'defensiva', desc: '+8% Mitigación de daño constante.' },
+      { id: 'berserk', name: 'Frenesí de Guerra', type: 'ofensiva', desc: '+15% velocidad de ataque bajo 50% HP.' },
+      { id: 'celestialAegis', name: 'Égida Rúnica', type: 'defensiva', desc: 'Tus bloqueos curan 6% de tu vida máxima.' }
+    ];
+
+    const SHOP_WEAPONS = [
+      { id: 'w1', name: 'Hacha Fauces de Magma', bonusAtk: 18, bonusHp: 0, cost: 180, color: 0xf97316, scale: 1.25 },
+      { id: 'w2', name: 'Espadón del Rey Exánime', bonusAtk: 32, bonusHp: 120, cost: 360, color: 0x38bdf8, scale: 1.4 },
+      { id: 'w3', name: 'Guadaña Abisal de Argus', bonusAtk: 55, bonusHp: 240, cost: 720, color: 0xa855f7, scale: 1.55 },
+      { id: 'w4', name: 'Rompemundos Sargeras (Épico)', bonusAtk: 90, bonusHp: 450, cost: 1350, color: 0xef4444, scale: 1.7 }
+    ];
+
+    // Estado del Jugador y Combate
+    const state = {
+      heroName: 'Varian',
+      heroClass: 'barbarian',
+      gender: 'male',
+      hairStyle: 'horns',
+      armorColor: '#d97706',
+      nature: 'valiente',
+      level: 1,
+      stage: 1,
+      gold: 250,
+      statPoints: 2,
+      baseAtk: 46,
+      baseHp: 680,
+      baseDef: 16,
+      equippedWeapon: null,
+      skills: { lifesteal: 1 },
+      OwnedItems: new Set(),
+
+      // Estado en vivo de la pelea
+      inCombat: false,
+      heroHp: 680,
+      heroMaxHp: 680,
+      heroUlt: 0,
+      heroCasting: null,
+      heroShieldTimer: 0,
+      guaranteedCrit: false,
+      potions: 2,
+      cdInterrupt: 0,
+      cdShield: 0,
+
+      enemy: null,
+      enemyHp: 750,
+      enemyMaxHp: 750,
+      enemyUlt: 0,
+      enemyCasting: null,
+      enemyStunTimer: 0
+    };
+
+    // ============================================================================
+    // 3. ESCENA THREE.JS + CARGADOR GLTF + ANIMATION MIXER + BONE ATTACHMENTS
+    // ============================================================================
+    const canvas = document.getElementById('three-canvas');
+    const viewport = document.getElementById('arena-viewport');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color('#090d16');
+    scene.fog = new THREE.FogExp2('#090d16', 0.045);
+
+    const camera = new THREE.PerspectiveCamera(40, 16 / 9, 0.1, 100);
+    const defaultCamPos = new THREE.Vector3(0, 2.35, 6.8);
+    const defaultCamLook = new THREE.Vector3(0, 1.15, 0);
+    camera.position.copy(defaultCamPos);
+    camera.lookAt(defaultCamLook);
+
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.25;
+
+    function resizeRenderer() {
+      const w = viewport.clientWidth || 800;
+      const h = viewport.clientHeight || 360;
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    }
+    window.addEventListener('resize', resizeRenderer);
+
+    // Luces Dramáticas de Coliseo
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x1e293b, 1.2);
+    scene.add(hemiLight);
+
+    const dirLight = new THREE.DirectionalLight(0xfffbeb, 2.6);
+    dirLight.position.set(5, 10, 6);
+    dirLight.castShadow = true;
+    dirLight.shadow.mapSize.width = 1024;
+    dirLight.shadow.mapSize.height = 1024;
+    scene.add(dirLight);
+
+    const rimLightLeft = new THREE.PointLight(0xf59e0b, 4, 9);
+    rimLightLeft.position.set(-4, 2.5, -2);
+    scene.add(rimLightLeft);
+
+    const rimLightRight = new THREE.PointLight(0xef4444, 4, 9);
+    rimLightRight.position.set(4, 2.5, -2);
+    scene.add(rimLightRight);
+
+    // Suelo de Arena con Anillo Rúnico
+    const floorGeo = new THREE.CylinderGeometry(7, 7.5, 0.4, 48);
+    const floorMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.85, metalness: 0.15 });
+    const floorMesh = new THREE.Mesh(floorGeo, floorMat);
+    floorMesh.position.y = -0.2;
+    floorMesh.receiveShadow = true;
+    scene.add(floorMesh);
+
+    const ringGeo = new THREE.RingGeometry(2.8, 3.05, 48);
+    const ringMat = new THREE.MeshBasicMaterial({ color: 0xd97706, side: THREE.DoubleSide, transparent: true, opacity: 0.45 });
+    const runeRing = new THREE.Mesh(ringGeo, ringMat);
+    runeRing.rotation.x = -Math.PI / 2;
+    runeRing.position.y = 0.01;
+    scene.add(runeRing);
+
+    // Pilares de Fondo con Antorchas
+    for (let i = -2; i <= 2; i++) {
+      if (i === 0) continue;
+      const pillar = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.32, 0.38, 4.5, 12),
+        new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.9 })
+      );
+      pillar.position.set(i * 2.5, 2.1, -3.6);
+      pillar.castShadow = true;
+      scene.add(pillar);
+
+      const brazier = new THREE.Mesh(
+        new THREE.SphereGeometry(0.22, 12, 12),
+        new THREE.MeshBasicMaterial({ color: i < 0 ? 0xf59e0b : 0xef4444 })
+      );
+      brazier.position.set(i * 2.5, 4.4, -3.6);
+      scene.add(brazier);
+    }
+
+    // ============================================================================
+    // 4. GESTOR DE MODELOS .GLB Y CLIPS DE ANIMACIÓN ESQUELÉTICA
+    // ============================================================================
+    const gltfLoader = new GLTFLoader();
+    let baseGltfAsset = null; // Guardará el GLB descargado con su esqueleto y animaciones
+
+    // URL oficial del repositorio Three.js con malla SkinnedMesh + Esqueleto Humanoide + Animaciones
+    const DEFAULT_GLB_URL = 'https://threejs.org/examples/models/gltf/Soldier.glb';
+
+    // Estructura de control para el Héroe y el Enemigo
+    const fighters = {
+      hero: {
+        root: new THREE.Group(),
+        model: null,
+        mixer: null,
+        actions: {},
+        currentAction: null,
+        bones: {},
+        weaponGroup: new THREE.Group(),
+        shieldGroup: new THREE.Group(),
+        headGroup: new THREE.Group(),
+        baseX: -1.85,
+        targetX: -1.85,
+        facing: 1,
+        swingPhase: 0,
+        swingType: 'normal',
+        hitFlash: 0
+      },
+      enemy: {
+        root: new THREE.Group(),
+        model: null,
+        mixer: null,
+        actions: {},
+        currentAction: null,
+        bones: {},
+        weaponGroup: new THREE.Group(),
+        shieldGroup: new THREE.Group(),
+        headGroup: new THREE.Group(),
+        baseX: 1.85,
+        targetX: 1.85,
+        facing: -1,
+        swingPhase: 0,
+        swingType: 'normal',
+        hitFlash: 0
+      }
+    };
+
+    scene.add(fighters.hero.root);
+    scene.add(fighters.enemy.root);
+
+    // Localizador inteligente de huesos dentro de cualquier esqueleto GLB (Mixamo, Three.js, KayKit)
+    function findHumanoidBones(rootObject) {
+      const found = { rightHand: null, leftHand: null, head: null, spine: null };
+      rootObject.traverse((node) => {
+        if (node.isBone) {
+          const n = node.name.toLowerCase();
+          if (!found.rightHand && (n.includes('righthand') || n.includes('hand_r') || n.includes('r_hand') || n.includes('rightwrist'))) {
+            found.rightHand = node;
+          }
+          if (!found.leftHand && (n.includes('lefthand') || n.includes('hand_l') || n.includes('l_hand') || n.includes('leftwrist'))) {
+            found.leftHand = node;
+          }
+          if (!found.head && (n.includes('head') || n.includes('neck'))) {
+            found.head = node;
+          }
+          if (!found.spine && (n.includes('spine1') || n.includes('spine2') || n.includes('chest') || n.includes('spine'))) {
+            found.spine = node;
+          }
+        }
+      });
+      return found;
+    }
+
+    // Construye armas 3D detalladas que se insertan directamente dentro del hueso RightHand_Bone
+    function createWeaponMesh(type, colorHex = 0xf59e0b, scaleMultiplier = 1.0) {
+      const group = new THREE.Group();
+      const metalMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.9, roughness: 0.2 });
+      const glowMat = new THREE.MeshStandardMaterial({ color: colorHex, emissive: colorHex, emissiveIntensity: 0.85, roughness: 0.3 });
+      const handleMat = new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.8 });
+
+      // Mango común
+      const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.65, 8), handleMat);
+      handle.position.y = 0.2;
+      group.add(handle);
+
+      if (type === 'axe') {
+        const blade = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.28, 0.04), metalMat);
+        blade.position.set(0.12, 0.48, 0);
+        const edge = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.32, 0.05), glowMat);
+        edge.position.set(0.28, 0.48, 0);
+        group.add(blade, edge);
+      } else if (type === 'swordShield') {
+        const guard = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.05, 0.08), glowMat);
+        guard.position.y = 0.35;
+        const blade = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.72, 0.025), metalMat);
+        blade.position.y = 0.72;
+        const core = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.62, 0.03), glowMat);
+        core.position.y = 0.72;
+        group.add(guard, blade, core);
+      } else if (type === 'katana') {
+        const guard = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.02, 12), glowMat);
+        guard.position.y = 0.32;
+        const blade = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.85, 0.018), glowMat);
+        blade.position.y = 0.75;
+        group.add(guard, blade);
+      } else if (type === 'staff') {
+        handle.scale.y = 1.6;
+        const orb = new THREE.Mesh(new THREE.OctahedronGeometry(0.14, 1), glowMat);
+        orb.position.y = 0.78;
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.02, 8, 24), metalMat);
+        ring.position.y = 0.78;
+        group.add(orb, ring);
+      } else if (type === 'scythe') {
+        handle.scale.y = 1.55;
+        const scytheBlade = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.55, 8), glowMat);
+        scytheBlade.rotation.z = -Math.PI / 2.2;
+        scytheBlade.position.set(0.24, 0.75, 0);
+        group.add(scytheBlade);
+      }
+
+      // Ajuste de orientación para el hueso de la mano del GLB
+      group.scale.setScalar(100 * scaleMultiplier); // Escala relativa al hueso del GLB
+      group.rotation.x = Math.PI / 2;
+      return group;
+    }
+
+    // Crea el yelmo/cuernos o corona que se acopla al hueso Head_Bone
+    function createHeadAccessory(style, colorHex) {
+      const group = new THREE.Group();
+      const mat = new THREE.MeshStandardMaterial({ color: colorHex, metalness: 0.75, roughness: 0.25, emissive: colorHex, emissiveIntensity: 0.25 });
+
+      if (style === 'horns') {
+        const hornL = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.22, 8), mat);
+        hornL.position.set(0.1, 0.14, 0.02);
+        hornL.rotation.z = -0.6;
+        const hornR = hornL.clone();
+        hornR.position.x = -0.1;
+        hornR.rotation.z = 0.6;
+        group.add(hornL, hornR);
+      } else if (style === 'crest') {
+        const crest = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.18, 0.26), mat);
+        crest.position.set(0, 0.18, 0);
+        group.add(crest);
+      } else if (style === 'crown') {
+        const crown = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.02, 8, 16), mat);
+        crown.rotation.x = Math.PI / 2;
+        crown.position.set(0, 0.14, 0);
+        group.add(crown);
+      } else if (style === 'hood') {
+        const hood = new THREE.Mesh(new THREE.SphereGeometry(0.14, 12, 12), mat);
+        hood.position.set(0, 0.08, -0.02);
+        group.add(hood);
+      }
+
+      group.scale.setScalar(100);
+      return group;
+    }
+
+    // Instancia un luchador clonando el esqueleto GLB con SkeletonUtils.clone()
+    function buildFighterFromGLB(fighterKey, config) {
+      const f = fighters[fighterKey];
+      // Limpiar modelo anterior si existía
+      while (f.root.children.length > 0) {
+        f.root.remove(f.root.children[0]);
+      }
+
+      const clonedScene = SkeletonUtils.clone(baseGltfAsset.scene);
+      f.model = clonedScene;
+
+      // Ajustar escala y orientación lateral 2.5D en la arena
+      const genderScaleY = config.gender === 'female' ? 1.03 : 1.08;
+      const genderScaleXZ = config.gender === 'female' ? 0.92 : 1.08;
+      const bossMult = config.isBoss ? 1.28 : 1.0;
+
+      clonedScene.scale.set(genderScaleXZ * bossMult, genderScaleY * bossMult, genderScaleXZ * bossMult);
+      // En Soldier.glb el frente mira hacia -Z, rotamos para que se miren frente a frente en el eje X
+      clonedScene.rotation.y = f.facing === 1 ? -Math.PI / 2 : Math.PI / 2;
+
+      // Clonar materiales SkinnedMesh para poder aplicar tintes de armadura individuales y destellos de golpe
+      let boneCount = 0;
+      clonedScene.traverse((child) => {
+        if (child.isBone) boneCount++;
+        if (child.isMesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+          child.material = child.material.clone();
+          child.material.color.lerp(new THREE.Color(config.tintColor), 0.55);
+          child.material.metalness = 0.55;
+          child.material.roughness = 0.35;
+        }
+      });
+
+      // Localizar huesos clave para acoplar equipamiento 3D
+      f.bones = findHumanoidBones(clonedScene);
+      if (f.bones.rightHand) {
+        f.weaponGroup = createWeaponMesh(config.weaponType, config.weaponColor, config.weaponScale);
+        f.bones.rightHand.add(f.weaponGroup);
+      }
+      if (f.bones.head) {
+        f.headGroup = createHeadAccessory(config.hairStyle, config.tintColor);
+        f.bones.head.add(f.headGroup);
+      }
+
+      f.root.add(clonedScene);
+      f.root.position.set(f.baseX, 0, 0);
+
+      // Configurar AnimationMixer y mapear clips de captura de movimiento
+      f.mixer = new THREE.AnimationMixer(clonedScene);
+      f.actions = {};
+
+      const clips = baseGltfAsset.animations || [];
+      clips.forEach((clip) => {
+        const lower = clip.name.toLowerCase();
+        const action = f.mixer.clipAction(clip);
+        if (lower.includes('idle')) f.actions.idle = action;
+        else if (lower.includes('run')) f.actions.run = action;
+        else if (lower.includes('walk')) f.actions.walk = action;
+        else if (lower.includes('attack') || lower.includes('slash') || lower.includes('punch')) f.actions.attack = action;
+        f.actions[clip.name] = action;
+      });
+
+      // Fallback inteligente si el GLB tiene otros nombres de clips
+      if (!f.actions.idle && clips[0]) f.actions.idle = f.mixer.clipAction(clips[0]);
+      if (!f.actions.run && clips[1]) f.actions.run = f.mixer.clipAction(clips[1]);
+      if (!f.actions.walk && clips[3]) f.actions.walk = f.mixer.clipAction(clips[3]);
+
+      playFighterAnimation(fighterKey, 'idle', 0.1);
+
+      if (fighterKey === 'hero') {
+        document.getElementById('anim-debug').textContent =
+          `GLTF SkinnedMesh Activo | Huesos: ${boneCount} | Clips MoCap: ${clips.map(c => c.name).join(', ')}`;
+      }
+    }
+
+    // Transición suave entre animaciones del esqueleto (.crossFadeTo)
+    function playFighterAnimation(fighterKey, animName, fadeDuration = 0.18) {
+      const f = fighters[fighterKey];
+      if (!f.mixer) return;
+      const nextAction = f.actions[animName] || f.actions.idle;
+      if (!nextAction || f.currentAction === nextAction) return;
+
+      nextAction.reset().play();
+      if (f.currentAction) {
+        f.currentAction.crossFadeTo(nextAction, fadeDuration, true);
+      }
+      f.currentAction = nextAction;
+    }
+
+    // Dispara una embestida física + rotación de ataque en el hueso de la columna y brazo derecho
+    function triggerSkeletalAttack(fighterKey, type = 'normal') {
+      const f = fighters[fighterKey];
+      f.swingPhase = 1.0;
+      f.swingType = type;
+      // Correr hacia el rival usando el clip MoCap de carrera
+      playFighterAnimation(fighterKey, 'run', 0.1);
+      f.targetX = f.facing === 1 ? 0.65 : -0.65;
+
+      setTimeout(() => {
+        playFighterAnimation(fighterKey, 'idle', 0.15);
+        f.targetX = f.baseX;
+      }, 380);
+    }
+
+    // ============================================================================
+    // 5. SISTEMA DE PARTÍCULAS 3D (CORTES, SANGRE/CHISPAS Y PROYECTILES ULTIMATE)
+    // ============================================================================
+    const vfxParticles = [];
+    function spawnImpactParticles(x, y, colorHex = 0xfbbf24, count = 18) {
+      const geo = new THREE.OctahedronGeometry(0.06, 0);
+      for (let i = 0; i < count; i++) {
+        const mat = new THREE.MeshBasicMaterial({ color: colorHex, transparent: true, opacity: 1 });
+        const p = new THREE.Mesh(geo, mat);
+        p.position.set(x, y, (Math.random() - 0.5) * 0.5);
+        const vel = new THREE.Vector3(
+          (Math.random() - 0.5) * 5.5,
+          Math.random() * 4.5 + 1.0,
+          (Math.random() - 0.5) * 3.5
+        );
+        scene.add(p);
+        vfxParticles.push({ mesh: p, vel, life: 0.55 });
+      }
+    }
+
+    function spawnUltimateVFX(targetX, colorHex = 0xef4444) {
+      // Pilar / Meteoro 3D descendente
+      const pillarGeo = new THREE.CylinderGeometry(0.55, 0.55, 6, 16);
+      const pillarMat = new THREE.MeshBasicMaterial({ color: colorHex, transparent: true, opacity: 0.85 });
+      const pillar = new THREE.Mesh(pillarGeo, pillarMat);
+      pillar.position.set(targetX, 3.0, 0);
+      scene.add(pillar);
+      vfxParticles.push({ mesh: pillar, vel: new THREE.Vector3(0, -2, 0), life: 0.65, isPillar: true });
+      spawnImpactParticles(targetX, 1.1, colorHex, 32);
+    }
+
+    // ============================================================================
+    // 6. CARGA INICIAL DEL ARCHIVO .GLB Y SOPORTE PARA SUBIR TU PROPIO .GLB
+    // ============================================================================
+    function loadGLBModel(url, isCustomFile = false) {
+      const overlay = document.getElementById('loading-overlay');
+      const bar = document.getElementById('loading-bar');
+      const status = document.getElementById('loading-status');
+      overlay.classList.remove('hidden');
+
+      gltfLoader.load(
+        url,
+        (gltf) => {
+          baseGltfAsset = gltf;
+          bar.style.width = '100%';
+          status.textContent = '¡Esqueleto 3D y animaciones listos!';
+          setTimeout(() => {
+            overlay.classList.add('hidden');
+            if (!isCustomFile) {
+              document.getElementById('creation-modal').classList.remove('hidden');
+              document.getElementById('creation-modal').classList.add('flex');
+            }
+            refresh3DFighters();
+            resizeRenderer();
+          }, 300);
+        },
+        (xhr) => {
+          if (xhr.total) {
+            const pct = Math.round((xhr.loaded / xhr.total) * 100);
+            bar.style.width = `${Math.max(20, pct)}%`;
+            status.textContent = `Descargando modelo .GLB (${pct}%)...`;
+          }
+        },
+        (err) => {
+          console.error('Error cargando GLB:', err);
+          status.textContent = 'Error de red cargando GLB externo.';
+        }
+      );
+    }
+
+    // Permite al usuario subir cualquier .GLB descargado de Mixamo o Sketchfab
+    function handleCustomGLBUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const blobUrl = URL.createObjectURL(file);
+      loadGLBModel(blobUrl, true);
+      logCombat(`📂 Modelo personalizado "${file.name}" cargado en el motor esquelético.`, 'text-amber-300');
+    }
+    document.getElementById('custom-glb-input').addEventListener('change', handleCustomGLBUpload);
+    document.getElementById('header-glb-input').addEventListener('change', handleCustomGLBUpload);
+
+    // Sincroniza los modelos 3D del Héroe y del Enemigo actual
+    function refresh3DFighters() {
+      if (!baseGltfAsset) return;
+      const cls = CLASSES[state.heroClass];
+      const wColor = state.equippedWeapon ? state.equippedWeapon.color : 0xf59e0b;
+      const wScale = state.equippedWeapon ? state.equippedWeapon.scale : 1.0;
+
+      buildFighterFromGLB('hero', {
+        gender: state.gender,
+        hairStyle: state.hairStyle,
+        tintColor: state.armorColor,
+        weaponType: cls.weaponType,
+        weaponColor: wColor,
+        weaponScale: wScale,
+        isBoss: false
+      });
+
+      setupStageEnemy(state.stage);
+    }
+
+    // ============================================================================
+    // 7. CONFIGURACIÓN DE ENEMIGOS Y DIFICULTAD PESADILLA (NIVELES 1 AL 20)
+    // ============================================================================
+    const ENEMY_NAMES = [
+      'Kargath el Desollador', 'Cazador de Cráneos Grom', 'Valquiria Sangrienta', 'Inquisidor Malakor',
+      'JEFE: Señor de la Guerra Blackhand', 'Samurái Fantasma Ronin', 'Piromante del Alba', 'Carnicero de la Arena',
+      'Guardián de Obsidiana', 'JEFE: Exarca del Fuego Vil', 'Verdugo de Ventormenta', 'Bruja de Escarcha',
+      'Berserker Rompehuesos', 'Caballero de la Muerte', 'JEFE: General Drakkisath', 'Asesino Sombra lunar',
+      'Coloso de Hierro Negro', 'Archimago Corrupto', 'Señor del Terror Nathrezim', 'JEFE FINAL: Sargeras el Destructor'
+    ];
+
+    function setupStageEnemy(stageNum) {
+      const isBoss = stageNum % 5 === 0;
+      // Escala de dificultad agresiva desde el Nivel 1 para exigir uso de [1] Interrumpir y [2] Escudo
+      const scale = Math.pow(1.22, stageNum - 1);
+      const hp = Math.round((isBoss ? 980 : 720) * scale);
+      const atk = Math.round((isBoss ? 62 : 48) * scale);
+      const def = Math.min(55, Math.round((isBoss ? 22 : 14) + stageNum * 1.5));
+
+      const weaponTypes = ['axe', 'swordShield', 'katana', 'staff', 'scythe'];
+      const enemyWeapon = weaponTypes[(stageNum - 1) % weaponTypes.length];
+      const enemyColors = ['#dc2626', '#7c3aed', '#0284c7', '#ea580c', '#be123c'];
+
+      state.enemy = {
+        name: ENEMY_NAMES[(stageNum - 1) % ENEMY_NAMES.length],
+        isBoss,
+        maxHp: hp,
+        atk,
+        def,
+        turnCount: 0
+      };
+      state.enemyHp = hp;
+      state.enemyMaxHp = hp;
+      state.enemyUlt = 0;
+      state.enemyCasting = null;
+
+      if (baseGltfAsset) {
+        buildFighterFromGLB('enemy', {
+          gender: stageNum % 2 === 0 ? 'female' : 'male',
+          hairStyle: isBoss ? 'horns' : 'crest',
+          tintColor: enemyColors[(stageNum - 1) % enemyColors.length],
+          weaponType: enemyWeapon,
+          weaponColor: isBoss ? 0xef4444 : 0xa855f7,
+          weaponScale: isBoss ? 1.55 : 1.15,
+          isBoss
+        });
+      }
+
+      updateAllHUD();
+    }
+
+    // ============================================================================
+    // 8. CÁLCULO DE ESTADÍSTICAS DEL JUGADOR Y ACTUALIZACIÓN DE INTERFAZ
+    // ============================================================================
+    function getHeroComputedStats() {
+      const nat = NATURES[state.nature];
+      const wepAtk = state.equippedWeapon ? state.equippedWeapon.bonusAtk : 0;
+      const wepHp = state.equippedWeapon ? state.equippedWeapon.bonusHp : 0;
+      const stoneSkinBonus = (state.skills.stoneSkin || 0) * 8;
+
+      const atk = Math.round((state.baseAtk + wepAtk) * nat.atkMod);
+      const maxHp = Math.round((state.baseHp + wepHp) * nat.hpMod);
+      const def = Math.min(70, Math.round((state.baseDef + stoneSkinBonus) * nat.defMod));
+      const critChance = Math.max(0.05, 0.15 + nat.critMod + (state.skills.critstrike || 0) * 0.10);
+
+      const power = Math.round(atk * 2.1 + maxHp * 0.09 + def * 2.2);
+      return { atk, maxHp, def, critChance, power };
+    }
+
+    function updateAllHUD() {
+      const hStats = getHeroComputedStats();
+      if (!state.inCombat) {
+        state.heroMaxHp = hStats.maxHp;
+        state.heroHp = hStats.maxHp;
+      }
+
+      document.getElementById('stage-indicator').textContent = `${state.stage} / 20`;
+      document.getElementById('match-title').textContent = `Fase ${state.stage}: ${state.enemy ? state.enemy.name : ''}`;
+      document.getElementById('gold-display').textContent = state.gold;
+      document.getElementById('hero-lvl-display').textContent = state.level;
+      document.getElementById('stat-points-badge').textContent = `Puntos: ${state.statPoints}`;
+
+      // Comparador de poder
+      const enemyPower = state.enemy ? Math.round(state.enemy.atk * 2.1 + state.enemy.maxHp * 0.09 + state.enemy.def * 2.2) : 150;
+      document.getElementById('hero-power-val').textContent = hStats.power;
+      document.getElementById('enemy-power-val').textContent = enemyPower;
+
+      // Estadísticas abajo
+      document.getElementById('stat-atk').textContent = hStats.atk;
+      document.getElementById('stat-hp').textContent = hStats.maxHp;
+      document.getElementById('stat-def').textContent = `${hStats.def}%`;
+
+      // HUD Superior de Combate
+      document.getElementById('hud-hero-name').textContent = state.heroName;
+      document.getElementById('hud-hero-class').textContent = `(${CLASSES[state.heroClass].name})`;
+      document.getElementById('hud-hero-hp-text').textContent = `${Math.max(0, Math.round(state.heroHp))} / ${state.heroMaxHp} HP`;
+      document.getElementById('hud-hero-hp-bar').style.width = `${Math.max(0, (state.heroHp / state.heroMaxHp) * 100)}%`;
+      document.getElementById('hud-hero-ult-bar').style.width = `${Math.min(100, state.heroUlt)}%`;
+
+      if (state.enemy) {
+        document.getElementById('hud-enemy-name').textContent = state.enemy.name;
+        document.getElementById('hud-enemy-badge').textContent = state.enemy.isBoss ? '👑 JEFE' : 'ÉLITE';
+        document.getElementById('hud-enemy-hp-text').textContent = `${Math.max(0, Math.round(state.enemyHp))} / ${state.enemyMaxHp} HP`;
+        document.getElementById('hud-enemy-hp-bar').style.width = `${Math.max(0, (state.enemyHp / state.enemyMaxHp) * 100)}%`;
+        document.getElementById('hud-enemy-ult-bar').style.width = `${Math.min(100, state.enemyUlt)}%`;
+      }
+
+      const nat = NATURES[state.nature];
+      document.getElementById('active-nature-label').textContent = `${nat.name} (${nat.desc})`;
+      document.getElementById('potions-left').textContent = `${state.potions}/2`;
+
+      renderShopList();
+      renderSkillsList();
+    }
+
+    function renderShopList() {
+      const container = document.getElementById('shop-list');
+      container.innerHTML = '';
+      SHOP_WEAPONS.forEach((w) => {
+        const owned = state.OwnedItems.has(w.id);
+        const equipped = state.equippedWeapon && state.equippedWeapon.id === w.id;
+        const row = document.createElement('div');
+        row.className = 'flex items-center justify-between bg-slate-950 px-2.5 py-1.5 rounded border border-slate-800 text-xs';
+        row.innerHTML = `
+          <div>
+            <span class="font-bold text-amber-300">${w.name}</span>
+            <span class="text-emerald-400 text-[11px] ml-1">▲ +${w.bonusAtk} ATQ ${w.bonusHp ? `+${w.bonusHp} HP` : ''}</span>
+          </div>
+          <button class="px-2 py-0.5 rounded font-bold text-[11px] ${
+            equipped ? 'bg-emerald-800 text-white' : owned ? 'bg-blue-700 text-white' : 'bg-amber-600 text-black hover:bg-amber-500'
+          }">
+            ${equipped ? 'Equipado' : owned ? 'Equipar' : `${w.cost} 🪙`}
+          </button>
+        `;
+        row.querySelector('button').addEventListener('click', () => {
+          if (equipped) return;
+          if (!owned) {
+            if (state.gold < w.cost) {
+              logCombat('❌ No tienes suficiente oro para forjar esta arma.', 'text-red-400');
+              return;
+            }
+            state.gold -= w.cost;
+            state.OwnedItems.add(w.id);
+          }
+          state.equippedWeapon = w;
+          logCombat(`⚔️ Arma "${w.name}" acoplada al hueso RightHand_Bone.`, 'text-amber-300');
+          refresh3DFighters();
+          updateAllHUD();
+        });
+        container.appendChild(row);
+      });
+    }
+
+    function renderSkillsList() {
+      const container = document.getElementById('skills-container');
+      container.innerHTML = '';
+      Object.entries(state.skills).forEach(([id, lvl]) => {
+        const sk = SKILL_POOL.find(s => s.id === id);
+        if (!sk) return;
+        const badge = document.createElement('div');
+        badge.className = 'bg-slate-950 border border-purple-900/60 rounded p-1.5';
+        badge.innerHTML = `
+          <div class="flex justify-between font-bold text-purple-300 text-[11px]">
+            <span>${sk.name}</span>
+            <span>Nv.${lvl}</span>
+          </div>
+          <div class="text-[10px] text-slate-400 truncate">${sk.desc}</div>
+        `;
+        container.appendChild(badge);
+      });
+    }
+
+    // ============================================================================
+    // 9. MOTOR DE COMBATE EN TIEMPO REAL CON BARRAS DE CASTEO E INTERRUPCIÓN
+    // ============================================================================
+    let heroAttackTimer = 0;
+    let enemyAttackTimer = 0;
+
+    function spawnFloatingText(text, isHeroTarget, colorClass = 'text-white', sizeClass = 'text-xl') {
+      const container = document.getElementById('floating-texts');
+      const el = document.createElement('div');
+      el.className = `dmg-popup ${colorClass} ${sizeClass}`;
+      el.style.left = isHeroTarget ? '24%' : '72%';
+      el.style.top = '38%';
+      el.textContent = text;
+      container.appendChild(el);
+      setTimeout(() => el.remove(), 1050);
+    }
+
+    function logCombat(msg, colorClass = 'text-slate-300') {
+      const log = document.getElementById('combat-log');
+      const entry = document.createElement('div');
+      entry.className = colorClass;
+      entry.textContent = `» ${msg}`;
+      log.appendChild(entry);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function updateCombatStep(dt) {
+      if (!state.inCombat) return;
+
+      // Reducir enfriamientos tácticos
+      if (state.cdInterrupt > 0) state.cdInterrupt = Math.max(0, state.cdInterrupt - dt);
+      if (state.cdShield > 0) state.cdShield = Math.max(0, state.cdShield - dt);
+      if (state.heroShieldTimer > 0) state.heroShieldTimer = Math.max(0, state.heroShieldTimer - dt);
+      if (state.enemyStunTimer > 0) state.enemyStunTimer = Math.max(0, state.enemyStunTimer - dt);
+
+      document.getElementById('cd-interrupt').textContent = state.cdInterrupt > 0 ? `${state.cdInterrupt.toFixed(1)}s` : 'Listo';
+      document.getElementById('cd-shield').textContent = state.cdShield > 0 ? `${state.cdShield.toFixed(1)}s` : 'Listo';
+
+      const hStats = getHeroComputedStats();
+
+      // 1. GESTIÓN DE CASTEO DE ULTIMATE DEL HÉROE
+      if (state.heroCasting) {
+        state.heroCasting.elapsed += dt;
+        const pct = Math.min(100, (state.heroCasting.elapsed / state.heroCasting.duration) * 100);
+        document.getElementById('hero-cast-bar').style.width = `${pct}%`;
+        document.getElementById('hero-cast-time').textContent = `${Math.max(0, state.heroCasting.duration - state.heroCasting.elapsed).toFixed(1)}s`;
+
+        if (state.heroCasting.elapsed >= state.heroCasting.duration) {
+          // Lanzar Ultimate del Héroe
+          document.getElementById('hero-cast-wrap').classList.add('hidden');
+          state.heroCasting = null;
+          playSound('ult');
+          triggerSkeletalAttack('hero', 'ult');
+          spawnUltimateVFX(fighters.enemy.baseX, 0xf59e0b);
+
+          const ultDmg = Math.round(hStats.atk * 2.65);
+          state.enemyHp -= ultDmg;
+          fighters.enemy.hitFlash = 0.35;
+          spawnFloatingText(`⚡ ¡${ultDmg} ULTIMATE!`, false, 'text-amber-300', 'text-2xl');
+          logCombat(`🔥 Ejecutas ${CLASSES[state.heroClass].ultName} causando ${ultDmg} de daño devastador.`, 'text-amber-300 font-bold');
+          checkBattleEnd();
+        }
+      } else {
+        // Turno de ataque básico del Héroe
+        heroAttackTimer += dt;
+        const heroInterval = 1.45 / CLASSES[state.heroClass].speed;
+        if (heroAttackTimer >= heroInterval) {
+          heroAttackTimer = 0;
+          if (state.heroUlt >= 100) {
+            state.heroUlt = 0;
+            state.heroCasting = { duration: 1.35, elapsed: 0 };
+            document.getElementById('hero-cast-wrap').classList.remove('hidden');
+          } else {
+            triggerSkeletalAttack('hero', 'normal');
+            const isCrit = state.guaranteedCrit || Math.random() < hStats.critChance;
+            state.guaranteedCrit = false;
+            const mult = isCrit ? 1.85 : 1.0;
+            const raw = hStats.atk * mult;
+            const dmg = Math.max(8, Math.round(raw * (1 - state.enemy.def / 100)));
+
+            state.enemyHp -= dmg;
+            state.heroUlt = Math.min(100, state.heroUlt + 28);
+            fighters.enemy.hitFlash = 0.22;
+            playSound(isCrit ? 'crit' : 'slash');
+            spawnImpactParticles(fighters.enemy.baseX, 1.2, isCrit ? 0xfbbf24 : 0xffffff, isCrit ? 22 : 12);
+            spawnFloatingText(isCrit ? `💥 ${dmg} CRIT!` : `-${dmg}`, false, isCrit ? 'text-yellow-300' : 'text-white', isCrit ? 'text-2xl' : 'text-lg');
+
+            // Robo de vida por habilidad
+            if (state.skills.lifesteal) {
+              const heal = Math.round(dmg * 0.12 * state.skills.lifesteal);
+              state.heroHp = Math.min(state.heroMaxHp, state.heroHp + heal);
+            }
+            checkBattleEnd();
+          }
+        }
+      }
+
+      // 2. GESTIÓN DEL ENEMIGO (CON CASTEO DE GOLPE LETAL / ULTIMATE INTERRUMPIBLE)
+      if (!state.inCombat) return;
+      if (state.enemyStunTimer > 0) return; // Enemigo aturdido por tu Patada [1]
+
+      if (state.enemyCasting) {
+        state.enemyCasting.elapsed += dt;
+        const pct = Math.min(100, (state.enemyCasting.elapsed / state.enemyCasting.duration) * 100);
+        document.getElementById('enemy-cast-bar').style.width = `${pct}%`;
+        document.getElementById('enemy-cast-time').textContent = `${Math.max(0, state.enemyCasting.duration - state.enemyCasting.elapsed).toFixed(1)}s`;
+
+        if (state.enemyCasting.elapsed >= state.enemyCasting.duration) {
+          document.getElementById('enemy-cast-wrap').classList.add('hidden');
+          const castType = state.enemyCasting.type;
+          state.enemyCasting = null;
+
+          triggerSkeletalAttack('enemy', 'ult');
+          playSound('ult');
+          spawnUltimateVFX(fighters.hero.baseX, 0xef4444);
+
+          const baseMult = castType === 'ult' ? 2.85 : 2.05;
+          let enemyDmg = Math.round(state.enemy.atk * baseMult * (1 - hStats.def / 100));
+          if (state.heroShieldTimer > 0) {
+            enemyDmg = Math.round(enemyDmg * 0.35);
+            logCombat('🛡️ Tu Baluarte absorbió el 65% del ataque canalizado enemigo.', 'text-cyan-300');
+          }
+
+          state.heroHp -= enemyDmg;
+          fighters.hero.hitFlash = 0.35;
+          spawnFloatingText(`💀 -${enemyDmg}`, true, 'text-red-400', 'text-2xl');
+          logCombat(`⚠️ ¡${state.enemy.name} conectó su ataque canalizado por ${enemyDmg} de daño! Usa [1] la próxima vez.`, 'text-red-400 font-bold');
+          checkBattleEnd();
+        }
+      } else {
+        enemyAttackTimer += dt;
+        if (enemyAttackTimer >= 1.55) {
+          enemyAttackTimer = 0;
+          state.enemy.turnCount++;
+
+          // Cada 2 golpes o al llenar barra, el enemigo canaliza un golpe mortal interrumpible
+          if (state.enemyUlt >= 100 || state.enemy.turnCount % 2 === 0) {
+            const isUlt = state.enemyUlt >= 100;
+            if (isUlt) state.enemyUlt = 0;
+            state.enemyCasting = {
+              type: isUlt ? 'ult' : 'heavy',
+              duration: 1.65,
+              elapsed: 0
+            };
+            document.getElementById('enemy-cast-name').textContent = isUlt
+              ? '⚠️ ¡ULTIMATE ENEMIGO! [PULSA 1 INTERRUMPIR]'
+              : '⚠️ ¡GOLPE DEMOLEDOR! [PULSA 1 INTERRUMPIR]';
+            document.getElementById('enemy-cast-wrap').classList.remove('hidden');
+          } else {
+            triggerSkeletalAttack('enemy', 'normal');
+            let dmg = Math.max(10, Math.round(state.enemy.atk * (1 - hStats.def / 100)));
+            if (state.heroShieldTimer > 0) dmg = Math.round(dmg * 0.35);
+
+            state.heroHp -= dmg;
+            state.enemyUlt = Math.min(100, state.enemyUlt + 34);
+            fighters.hero.hitFlash = 0.22;
+            playSound('slash');
+            spawnImpactParticles(fighters.hero.baseX, 1.2, 0xef4444, 14);
+            spawnFloatingText(`-${dmg}`, true, 'text-rose-300', 'text-lg');
+
+            if (state.skills.thorns) {
+              const reflect = Math.round(dmg * 0.18 * state.skills.thorns);
+              state.enemyHp -= reflect;
+            }
+            checkBattleEnd();
+          }
+        }
+      }
+
+      updateAllHUD();
+    }
+
+    function checkBattleEnd() {
+      if (state.enemyHp <= 0) {
+        state.enemyHp = 0;
+        state.inCombat = false;
+        document.getElementById('enemy-cast-wrap').classList.add('hidden');
+        document.getElementById('hero-cast-wrap').classList.add('hidden');
+
+        const rewardGold = 140 + state.stage * 45 + (state.enemy.isBoss ? 250 : 0);
+        state.gold += rewardGold;
+        state.level++;
+        state.statPoints += 2;
+
+        // Habilidad aleatoria ganada al subir de nivel (Roguelike Run)
+        const randSkill = SKILL_POOL[Math.floor(Math.random() * SKILL_POOL.length)];
+        state.skills[randSkill.id] = (state.skills[randSkill.id] || 0) + 1;
+
+        logCombat(`🏆 ¡VICTORIA! Derrotaste a ${state.enemy.name}. Ganaste +${rewardGold} 🪙, +2 Puntos y subió [${randSkill.name}].`, 'text-emerald-400 font-bold');
+        document.getElementById('combat-status-banner').textContent = '¡Victoria! Prepárate para el siguiente nivel';
+
+        if (state.stage < 20) state.stage++;
+        setupStageEnemy(state.stage);
+      } else if (state.heroHp <= 0) {
+        state.heroHp = 0;
+        state.inCombat = false;
+        document.getElementById('enemy-cast-wrap').classList.add('hidden');
+        document.getElementById('hero-cast-wrap').classList.add('hidden');
+        logCombat(`💀 Has caído ante ${state.enemy.name}. Invierte tus puntos/oro y usa [1] para cortar su casteo.`, 'text-red-400 font-bold');
+        document.getElementById('combat-status-banner').textContent = 'Derrota - Reintenta el nivel';
+        setupStageEnemy(state.stage);
+      }
+      updateAllHUD();
+    }
+
+    // ============================================================================
+    // 10. HABILIDADES TÁCTICAS MANUALES ([1] INTERRUMPIR, [2] ESCUDO, [3] POCIÓN)
+    // ============================================================================
+    function useInterrupt() {
+      if (!state.inCombat || state.cdInterrupt > 0) return;
+      state.cdInterrupt = 5.0;
+      playSound('interrupt');
+      triggerSkeletalAttack('hero', 'normal');
+
+      if (state.enemyCasting) {
+        state.enemyCasting = null;
+        state.enemyStunTimer = 1.6;
+        document.getElementById('enemy-cast-wrap').classList.add('hidden');
+        state.heroUlt = Math.min(100, state.heroUlt + 30);
+        state.guaranteedCrit = true;
+        spawnFloatingText('⚡ ¡INTERRUMPIDO + ATURDIDO!', false, 'text-amber-300', 'text-xl');
+        logCombat('🦶 ¡Patada perfecta! Cortaste el casteo enemigo, lo aturdiste 1.6s y tu próximo golpe será CRÍTICO.', 'text-amber-300 font-bold');
+      } else {
+        spawnFloatingText('🦶 Patada', false, 'text-slate-300', 'text-base');
+        logCombat('🦶 Usaste Patada, pero el enemigo no estaba canalizando ningún ataque.', 'text-slate-400');
+      }
+    }
+
+    function useShield() {
+      if (!state.inCombat || state.cdShield > 0) return;
+      state.cdShield = 7.5;
+      state.heroShieldTimer = 3.2;
+      spawnFloatingText('🛡️ BALUARTE (-65% DAÑO)', true, 'text-cyan-300', 'text-lg');
+      logCombat('🛡️ Activaste Baluarte Defensivo durante 3.2 segundos.', 'text-cyan-300');
+    }
+
+    function usePotion() {
+      if (!state.inCombat || state.potions <= 0) return;
+      state.potions--;
+      const heal = Math.round(state.heroMaxHp * 0.40);
+      state.heroHp = Math.min(state.heroMaxHp, state.heroHp + heal);
+      spawnFloatingText(`🧪 +${heal} HP`, true, 'text-emerald-300', 'text-xl');
+      logCombat(`🧪 Bebiste una Poción Carmesí y recuperaste ${heal} HP.`, 'text-emerald-300');
+      updateAllHUD();
+    }
+
+    document.getElementById('skill-interrupt-btn').addEventListener('click', useInterrupt);
+    document.getElementById('skill-shield-btn').addEventListener('click', useShield);
+    document.getElementById('skill-potion-btn').addEventListener('click', usePotion);
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === '1') useInterrupt();
+      if (e.key === '2') useShield();
+      if (e.key === '3') usePotion();
+    });
+
+    // ============================================================================
+    // 11. EVENTOS DE INTERFAZ Y CREACIÓN DE PERSONAJE
+    // ============================================================================
+    document.querySelectorAll('.class-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.class-btn').forEach(b => b.className = 'class-btn bg-slate-900 border border-slate-700 rounded p-2 text-xs font-bold text-center');
+        btn.className = 'class-btn bg-amber-900/50 border-2 border-amber-400 rounded p-2 text-xs font-bold text-center';
+        state.heroClass = btn.dataset.class;
+        const cls = CLASSES[state.heroClass];
+        state.baseAtk = cls.atk;
+        state.baseHp = cls.hp;
+        state.baseDef = cls.def;
+        refresh3DFighters();
+      });
+    });
+
+    document.querySelectorAll('#tint-selector button').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        state.armorColor = btn.dataset.color;
+        refresh3DFighters();
+      });
+    });
+
+    document.querySelectorAll('.nature-card').forEach((card) => {
+      card.addEventListener('click', () => {
+        document.querySelectorAll('.nature-card').forEach(c => c.className = 'nature-card cursor-pointer p-2.5 rounded border border-slate-700 bg-slate-900');
+        card.className = 'nature-card cursor-pointer p-2.5 rounded border-2 border-amber-400 bg-amber-950/30';
+        state.nature = card.dataset.nature;
+      });
+    });
+
+    document.getElementById('start-campaign-btn').addEventListener('click', () => {
+      state.heroName = document.getElementById('hero-name-input').value.trim() || 'Varian';
+      state.gender = document.getElementById('gender-select').value;
+      state.hairStyle = document.getElementById('hair-select').value;
+      document.getElementById('creation-modal').classList.add('hidden');
+      document.getElementById('creation-modal').classList.remove('flex');
+      refresh3DFighters();
+      updateAllHUD();
+    });
+
+    document.getElementById('fight-btn').addEventListener('click', () => {
+      if (state.inCombat) return;
+      const hStats = getHeroComputedStats();
+      state.heroMaxHp = hStats.maxHp;
+      state.heroHp = hStats.maxHp;
+      state.heroUlt = 0;
+      state.potions = 2;
+      state.enemyHp = state.enemyMaxHp;
+      state.enemyUlt = 0;
+      state.inCombat = true;
+      document.getElementById('combat-status-banner').textContent = '🔥 ¡Combate en curso!';
+      logCombat(`⚔️ Comienza el duelo contra ${state.enemy.name}. ¡Atento a su barra de casteo para pulsar [1]!`, 'text-amber-300');
+    });
+
+    document.getElementById('test-anim-btn').addEventListener('click', () => {
+      triggerSkeletalAttack('hero', 'ult');
+      playSound('slash');
+      spawnImpactParticles(fighters.enemy.baseX, 1.2, 0xf59e0b, 20);
+    });
+
+    document.querySelectorAll('.add-stat-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        if (state.statPoints <= 0) return;
+        state.statPoints--;
+        const st = btn.dataset.stat;
+        if (st === 'atk') state.baseAtk += 5;
+        if (st === 'hp') state.baseHp += 95;
+        if (st === 'def') state.baseDef += 4;
+        updateAllHUD();
+      });
+    });
+
+    document.getElementById('roll-skill-btn').addEventListener('click', () => {
+      if (state.gold < 120) {
+        logCombat('❌ Necesitas 120 de oro para girar la Ruleta del Destino.', 'text-red-400');
+        return;
+      }
+      state.gold -= 120;
+      const pick = SKILL_POOL[Math.floor(Math.random() * SKILL_POOL.length)];
+      state.skills[pick.id] = (state.skills[pick.id] || 0) + 1;
+      logCombat(`🎲 Ruleta del Destino: ¡Obtuviste +1 nivel en [${pick.name}]!`, 'text-purple-300 font-bold');
+      updateAllHUD();
+    });
+
+    document.getElementById('reroll-nature-btn').addEventListener('click', () => {
+      if (state.gold < 1500) {
+        logCombat('❌ Necesitas 1,500 de oro para mutar tu Naturaleza.', 'text-red-400');
+        return;
+      }
+      state.gold -= 1500;
+      const keys = Object.keys(NATURES);
+      state.nature = keys[(keys.indexOf(state.nature) + 1) % keys.length];
+      logCombat(`🧬 Tu Naturaleza ha mutado a: ${NATURES[state.nature].name}.`, 'text-amber-300');
+      updateAllHUD();
+    });
+
+    // ============================================================================
+    // 12. BUCLE DE RENDERIZADO THREE.JS Y DINÁMICA DE HUESOS EN TIEMPO REAL
+    // ============================================================================
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const dt = Math.min(0.1, clock.getDelta());
+
+      // Actualizar los AnimationMixers de ambos esqueletos GLB
+      ['hero', 'enemy'].forEach((key) => {
+        const f = fighters[key];
+        if (f.mixer) f.mixer.update(dt);
+
+        // Interpolación de posición al embestir
+        f.root.position.x = THREE.MathUtils.lerp(f.root.position.x, f.targetX, dt * 11);
+
+        // Si está ejecutando un tajo de arma, rotamos dinámicamente el hueso del brazo y torso encima del clip MoCap
+        if (f.swingPhase > 0) {
+          f.swingPhase = Math.max(0, f.swingPhase - dt * 3.2);
+          const wave = Math.sin(f.swingPhase * Math.PI);
+          if (f.bones.rightHand) {
+            f.bones.rightHand.rotation.x += wave * (f.swingType === 'ult' ? 2.2 : 1.3);
+          }
+          if (f.bones.spine) {
+            f.bones.spine.rotation.y = wave * 0.45 * f.facing;
+          }
+        }
+
+        // Efecto de escudo activo sobre el héroe
+        if (key === 'hero' && f.model) {
+          runeRing.material.color.setHex(state.heroShieldTimer > 0 ? 0x22d3ee : 0xd97706);
+        }
+
+        // Flash blanco/rojo al recibir daño en la malla SkinnedMesh
+        if (f.hitFlash > 0 && f.model) {
+          f.hitFlash = Math.max(0, f.hitFlash - dt);
+          f.model.traverse((c) => {
+            if (c.isMesh && c.material.emissive) {
+              c.material.emissive.setHex(f.hitFlash > 0 ? 0xdc2626 : 0x000000);
+              c.material.emissiveIntensity = f.hitFlash > 0 ? 0.8 : 0;
+            }
+          });
+        }
+      });
+
+      // Actualizar partículas 3D
+      for (let i = vfxParticles.length - 1; i >= 0; i--) {
+        const p = vfxParticles[i];
+        p.life -= dt;
+        if (p.life <= 0) {
+          scene.remove(p.mesh);
+          vfxParticles.splice(i, 1);
+        } else {
+          p.mesh.position.addScaledVector(p.vel, dt);
+          if (!p.isPillar) p.vel.y -= 9.8 * dt;
+          p.mesh.material.opacity = Math.max(0, p.life * 1.8);
+        }
+      }
+
+      runeRing.rotation.z += dt * 0.35;
+      updateCombatStep(dt);
+      renderer.render(scene, camera);
+    }
+
+    // Iniciar descarga del modelo GLB real y arrancar el bucle
+    resizeRenderer();
+    loadGLBModel(DEFAULT_GLB_URL);
+    animate();
+  </script>
+</body>
+</html>
