@@ -3,530 +3,1633 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Amphitheatrum Flavium: Pixel Art Arena</title>
+  <title>Amphitheatrum Flavium: 16-Bit Pixel Art Colosseum</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800;900&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Press+Start+2P&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 
   <style>
-    body { font-family: 'Inter', sans-serif; background-color: #04060a; color: #e2e8f0; overflow-x: hidden; user-select: none; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #05070c;
+      color: #f1f5f9;
+      overflow-x: hidden;
+      user-select: none;
+    }
     .font-cinzel { font-family: 'Cinzel', serif; }
-    .pixel-panel {
-      background: linear-gradient(180deg, rgba(15, 20, 30, 0.98) 0%, rgba(7, 10, 16, 0.99) 100%);
-      border: 3px solid #785a28;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.9), inset 0 0 15px rgba(120, 90, 40, 0.2);
-    }
-    .pixel-btn {
-      background: linear-gradient(180deg, #b45309 0%, #78350f 100%);
-      border: 2px solid #fbbf24;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.8);
-      transition: all 0.1s ease;
-    }
-    .pixel-btn:hover:not(:disabled) { filter: brightness(1.2); transform: translateY(-1px); }
-    .pixel-btn:disabled { filter: grayscale(0.9); opacity: 0.4; cursor: not-allowed; }
+    .font-pixel { font-family: 'Press Start 2P', monospace; }
 
-    @keyframes floatText {
-      0% { opacity: 1; transform: translateY(0) scale(0.8); }
-      100% { opacity: 0; transform: translateY(-55px) scale(1.1); }
+    /* Renderizado nítido para Pixel Art auténtico */
+    canvas {
+      image-rendering: -moz-crisp-edges;
+      image-rendering: -webkit-crisp-edges;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
     }
-    .pop-text {
-      position: absolute; pointer-events: none; font-family: 'Cinzel', serif; font-weight: 900;
-      text-shadow: 0 2px 6px rgba(0,0,0,0.95); animation: floatText 0.85s ease-out forwards; z-index: 30;
+
+    .wow-panel {
+      background: linear-gradient(180deg, #131824 0%, #090c14 100%);
+      border: 3px solid #9a7029;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.95), inset 0 0 0 2px #2c2216;
+    }
+
+    .wow-btn {
+      background: linear-gradient(180deg, #d97706 0%, #92400e 100%);
+      border: 2px solid #fde047;
+      box-shadow: 0 4px 0 #451a03, 0 6px 12px rgba(0,0,0,0.8);
+      transition: transform 0.08s, filter 0.1s;
+    }
+    .wow-btn:hover:not(:disabled) {
+      filter: brightness(1.18);
+      transform: translateY(-1px);
+    }
+    .wow-btn:active:not(:disabled) {
+      transform: translateY(2px);
+      box-shadow: 0 1px 0 #451a03;
+    }
+    .wow-btn:disabled {
+      filter: grayscale(0.95);
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    @keyframes floatPixelDmg {
+      0% { opacity: 1; transform: translateY(0) scale(0.7); }
+      20% { opacity: 1; transform: translateY(-18px) scale(1.15); }
+      100% { opacity: 0; transform: translateY(-65px) scale(0.95); }
+    }
+    .dmg-popup {
+      position: absolute;
+      pointer-events: none;
+      font-family: 'Press Start 2P', monospace;
+      text-shadow: 3px 3px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000;
+      animation: floatPixelDmg 0.95s steps(12, end) forwards;
+      z-index: 40;
     }
   </style>
 </head>
 <body class="min-h-screen flex flex-col justify-between p-2 md:p-4">
 
-  <!-- MODAL DE CREACIÓN DE PERSONAJE (GÉNERO, CLASE Y NATURALEZA) -->
-  <div id="creation-modal" class="fixed inset-0 z-50 bg-black/9ைக்கு flex items-center justify-center p-4">
-    <div class="pixel-panel rounded-xl max-w-2xl w-full p-6 border-2 border-amber-500 space-y-4">
-      <div class="border-b border-amber-900/60 pb-3">
-        <h2 class="font-cinzel text-2xl font-black text-amber-400">CREACIÓN DE GLADIADOR (PIXEL ART)</h2>
-        <p class="text-xs text-slate-400">Elige tu clase, género (con animaciones y sprites diferenciados) y naturaleza de combate.</p>
+  <!-- ========================================================================= -->
+  <!-- MODAL 1: CREADOR DE CAMPEÓN PIXEL ART CON VISTA PREVIA EN VIVO            -->
+  <!-- ========================================================================= -->
+  <div id="creation-modal" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-3">
+    <div class="wow-panel rounded-xl max-w-4xl w-full p-5 md:p-6">
+      <div class="flex flex-wrap items-center justify-between border-b-2 border-amber-900/70 pb-3 mb-4 gap-2">
+        <div>
+          <h2 class="font-cinzel text-2xl md:text-3xl font-black text-amber-400 tracking-wide">FORJA TU CAMPEÓN (16-BIT PIXEL RIG)</h2>
+          <p class="text-xs text-slate-400">Personaliza clase, sexo (silueta y rostro diferenciados), cabello, ojos, vestimenta y naturaleza.</p>
+        </div>
+        <span class="font-pixel text-[10px] bg-amber-950 border border-amber-500 text-amber-300 px-3 py-1.5 rounded">20 NIVELES + JEFES</span>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div class="space-y-3">
-          <div>
-            <label class="text-xs font-bold uppercase tracking-wider text-amber-300 block mb-1">Nombre</label>
-            <input id="hero-name-input" type="text" value="Maximus" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white outline-none focus:border-amber-400" />
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <!-- VISTA PREVIA DEL SPRITE PIXEL ART EN VIVO (4 cols) -->
+        <div class="lg:col-span-4 bg-slate-950 border-2 border-amber-700/70 rounded-xl p-4 flex flex-col items-center justify-between">
+          <div class="text-center w-full">
+            <span class="text-[10px] font-bold uppercase tracking-widest text-amber-400">Vista Previa del Sprite</span>
+            <h3 id="preview-title" class="font-cinzel font-black text-lg text-white mt-0.5">Maximus - Bárbaro</h3>
           </div>
 
-          <div>
-            <label class="text-xs font-bold uppercase tracking-wider text-amber-300 block mb-1">Clase</label>
-            <div class="grid grid-cols-3 gap-1.5" id="class-selector">
-              <button data-class="barbarian" class="class-btn p-2 rounded bg-amber-900/50 border-2 border-amber-400 text-xs font-bold text-center">🪓 Bárbaro</button>
-              <button data-class="warrior" class="class-btn p-2 rounded bg-slate-900 border border-slate-700 text-xs font-bold text-center">🛡️ Mirmillón</button>
-              <button data-class="samurai" class="class-btn p-2 rounded bg-slate-900 border border-slate-700 text-xs font-bold text-center">⚔️ Samurái</button>
-              <button data-class="mage" class="class-btn p-2 rounded bg-slate-900 border border-slate-700 text-xs font-bold text-center">🔥 Evocador</button>
-              <button data-class="warlock" class="class-btn p-2 rounded bg-slate-900 border border-slate-700 text-xs font-bold text-center">💀 Brujo Vil</button>
-            </div>
+          <div class="relative my-2 bg-slate-900/90 border border-slate-800 rounded-lg p-2 flex items-center justify-center w-full h-56">
+            <canvas id="preview-canvas" width="180" height="180" class="w-44 h-44"></canvas>
           </div>
 
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="text-xs font-bold uppercase tracking-wider text-amber-300 block mb-1">Género / Estilo</label>
-              <select id="gender-select" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white">
-                <option value="male">Masculino (Robusto)</option>
-                <option value="female">Femenino (Estilizado / Coleta)</option>
-              </select>
-            </div>
-            <div>
-              <label class="text-xs font-bold uppercase tracking-wider text-amber-300 block mb-1">Tinte Armadura</label>
-              <select id="color-select" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-xs text-white">
-                <option value="#f59e0b">Oro Imperial</option>
-                <option value="#3b82f6">Azul Legión</option>
-                <option value="#dc2626">Rojo Sangre</option>
-                <option value="#10b981">Esmeralda</option>
-              </select>
+          <div class="w-full space-y-2">
+            <button id="preview-attack-btn" class="w-full bg-slate-800 hover:bg-slate-700 border border-amber-500/60 text-amber-300 py-1.5 rounded text-xs font-bold">
+              ⚔️ Probar Animación de Golpe
+            </button>
+            <div id="preview-stats-box" class="bg-slate-900 p-2 rounded border border-slate-800 text-[11px] text-slate-300 space-y-0.5">
+              <div>❤️ Vida Base: <span id="prev-hp" class="font-bold text-emerald-400">720</span> | 🗡️ Ataque: <span id="prev-atk" class="font-bold text-red-400">50</span></div>
+              <div>🛡️ Defensa: <span id="prev-def" class="font-bold text-cyan-400">16%</span> | ⚡ Ultimate: <span id="prev-ult" class="font-bold text-amber-300">Torbellino</span></div>
             </div>
           </div>
         </div>
 
-        <div class="flex flex-col justify-between bg-slate-950/80 p-3 rounded border border-slate-800">
-          <div>
-            <label class="text-xs font-bold uppercase tracking-wider text-amber-300 block mb-2">Naturaleza Innata</label>
-            <div class="space-y-2" id="nature-selector">
-              <div data-nature="valiente" class="nature-card cursor-pointer p-2 rounded border-2 border-amber-400 bg-amber-950/40 text-xs">
-                <div class="font-bold text-amber-300">🦁 Valiente (+20% Crítico)</div>
-              </div>
-              <div data-nature="feroz" class="nature-card cursor-pointer p-2 rounded border border-slate-700 bg-slate-900 text-xs">
-                <div class="font-bold text-red-400">🩸 Sanguinario (+25% Daño)</div>
-              </div>
-              <div data-nature="coloso" class="nature-card cursor-pointer p-2 rounded border border-slate-700 bg-slate-900 text-xs">
-                <div class="font-bold text-cyan-300">🏔️ Colosal (+30% Defensa)</div>
+        <!-- OPCIONES DE PERSONALIZACIÓN (8 cols) -->
+        <div class="lg:col-span-8 space-y-3.5">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="text-xs font-bold uppercase text-amber-300 block mb-1">Nombre del Héroe</label>
+              <input id="hero-name-input" type="text" value="Maximus" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-sm text-white focus:border-amber-400 outline-none" />
+            </div>
+            <div>
+              <label class="text-xs font-bold uppercase text-amber-300 block mb-1">Sexo / Silueta del Sprite</label>
+              <div class="grid grid-cols-2 gap-2" id="gender-selector">
+                <button data-gender="male" class="gender-btn bg-amber-900/60 border-2 border-amber-400 rounded py-1.5 text-xs font-bold text-white">♂️ Masculino</button>
+                <button data-gender="female" class="gender-btn bg-slate-900 border border-slate-700 rounded py-1.5 text-xs font-bold text-slate-300">♀️ Femenino</button>
               </div>
             </div>
           </div>
 
-          <button id="start-game-btn" class="pixel-btn w-full py-3 rounded font-cinzel font-black text-sm text-white uppercase mt-3">
-            ⚔️ Ingresar al Coliseo
+          <!-- 5 Clases estilo WoW / Gladiador -->
+          <div>
+            <label class="text-xs font-bold uppercase text-amber-300 block mb-1">Clase de Combate (Única elección fija de la Run)</label>
+            <div class="grid grid-cols-5 gap-1.5" id="class-selector">
+              <button data-class="barbarian" class="class-btn bg-amber-900/60 border-2 border-amber-400 rounded p-2 text-xs font-bold text-center">🪓<br>Bárbaro</button>
+              <button data-class="warrior" class="class-btn bg-slate-900 border border-slate-700 rounded p-2 text-xs font-bold text-center">🛡️<br>Guerrero</button>
+              <button data-class="samurai" class="class-btn bg-slate-900 border border-slate-700 rounded p-2 text-xs font-bold text-center">⚔️<br>Samurái</button>
+              <button data-class="mage" class="class-btn bg-slate-900 border border-slate-700 rounded p-2 text-xs font-bold text-center">🔥<br>Mago</button>
+              <button data-class="warlock" class="class-btn bg-slate-900 border border-slate-700 rounded p-2 text-xs font-bold text-center">💀<br>Hechicero</button>
+            </div>
+          </div>
+
+          <!-- Cabello, Color de Pelo, Ojos y Armadura -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <div>
+              <label class="text-[11px] font-bold uppercase text-amber-300 block mb-1">Cabello / Yelmo</label>
+              <select id="hair-style-select" class="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-xs text-white">
+                <option value="mane">Melena Salvaje / Coleta</option>
+                <option value="mohawk">Cresta de Guerra</option>
+                <option value="horns">Yelmo con Cuernos</option>
+                <option value="knight">Gran Yelmo Cruzado</option>
+                <option value="hood">Capucha Arcana</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-[11px] font-bold uppercase text-amber-300 block mb-1">Color Cabello</label>
+              <select id="hair-color-select" class="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-xs text-white">
+                <option value="#f59e0b">Rubio Dorado</option>
+                <option value="#dc2626">Rojo Fuego</option>
+                <option value="#1e293b">Negro Azabache</option>
+                <option value="#e2e8f0">Blanco Platinado</option>
+                <option value="#9333ea">Violeta Místico</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-[11px] font-bold uppercase text-amber-300 block mb-1">Brillo de Ojos</label>
+              <select id="eye-color-select" class="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-xs text-white">
+                <option value="#38bdf8">Azul Ventormenta</option>
+                <option value="#ef4444">Carmesí Berserker</option>
+                <option value="#22c55e">Verde Energía Vil</option>
+                <option value="#facc15">Ámbar Dragón</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-[11px] font-bold uppercase text-amber-300 block mb-1">Vestimenta / Armadura</label>
+              <select id="armor-color-select" class="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-xs text-white">
+                <option value="#d97706">Bronce y Oro Real</option>
+                <option value="#2563eb">Acero de Alianza</option>
+                <option value="#b91c1c">Placas Carmesí Horda</option>
+                <option value="#7c3aed">Armadura Sombra Vil</option>
+                <option value="#059669">Escamas de Jade</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Naturalezas (Buff + Debuff Permanente) -->
+          <div>
+            <label class="text-xs font-bold uppercase text-amber-300 block mb-1">Naturaleza Permanente (Otorga 1 Buff y 1 Debuff toda la partida)</label>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2" id="nature-selector">
+              <div data-nature="valiente" class="nature-card cursor-pointer p-2 rounded border-2 border-amber-400 bg-amber-950/40">
+                <div class="text-xs font-bold text-amber-300">🦁 Valiente</div>
+                <div class="text-[11px] text-emerald-400">+22% Prob. Crítico</div>
+                <div class="text-[11px] text-red-400">-15% Defensa Base</div>
+              </div>
+              <div data-nature="feroz" class="nature-card cursor-pointer p-2 rounded border border-slate-700 bg-slate-900">
+                <div class="text-xs font-bold text-red-400">🩸 Sanguinario</div>
+                <div class="text-[11px] text-emerald-400">+28% Daño de Ataque</div>
+                <div class="text-[11px] text-red-400">-18% Vida Máxima</div>
+              </div>
+              <div data-nature="coloso" class="nature-card cursor-pointer p-2 rounded border border-slate-700 bg-slate-900">
+                <div class="text-xs font-bold text-cyan-300">🏔️ Colosal</div>
+                <div class="text-[11px] text-emerald-400">+28% Armadura Total</div>
+                <div class="text-[11px] text-red-400">-15% Velocidad Turno</div>
+              </div>
+            </div>
+          </div>
+
+          <button id="start-game-btn" class="wow-btn w-full py-3 rounded-lg font-cinzel font-black text-base text-white uppercase tracking-wider">
+            ⚔️ ¡ENTRAR A LA ARENA DE COMBATE!
           </button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- MODAL DE VICTORIA / DERROTA -->
-  <div id="result-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
-    <div class="pixel-panel rounded-xl max-w-md w-full p-6 border-2 border-amber-400 text-center space-y-3">
-      <div id="res-badge" class="inline-block px-3 py-1 rounded-full text-xs font-black uppercase bg-emerald-900 text-emerald-200 border border-emerald-400">Victoria</div>
-      <h2 id="res-title" class="font-cinzel text-2xl font-black text-amber-400">¡VICTORIA EN LA ARENA!</h2>
-      <p id="res-desc" class="text-xs text-slate-300">Has derrotado al oponente con honor.</p>
-      <button id="res-btn" class="pixel-btn w-full py-2.5 rounded font-cinzel font-bold text-white uppercase text-sm">Siguiente Oponente</button>
+  <!-- ========================================================================= -->
+  <!-- MODAL 2: VICTORIA / DERROTA / COFRE DE BOTÍN ÉPICO DE JEFE                -->
+  <!-- ========================================================================= -->
+  <div id="result-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div id="res-card" class="wow-panel rounded-2xl max-w-lg w-full p-6 border-2 border-amber-400 text-center space-y-4">
+      <div id="res-badge" class="inline-block px-4 py-1 rounded-full text-xs font-black uppercase bg-emerald-900 text-emerald-200 border border-emerald-400">
+        Combate Concluido
+      </div>
+      <h2 id="res-title" class="font-cinzel text-3xl font-black text-amber-400">🏆 ¡VICTORIA EN LA ARENA!</h2>
+      <p id="res-subtitle" class="text-xs text-slate-300"></p>
+
+      <div id="res-details" class="bg-slate-950 border border-slate-800 rounded-xl p-4 text-left space-y-2 text-xs"></div>
+
+      <div id="boss-loot-banner" class="hidden bg-gradient-to-r from-purple-950 via-indigo-950 to-amber-950 border-2 border-purple-400 rounded-xl p-3 text-left">
+        <div class="text-[11px] font-black uppercase text-purple-300">🎁 ¡BOTÍN ÉPICO DE JEFE OBTENIDO Y EQUIPADO!</div>
+        <div id="boss-loot-name" class="text-sm font-bold text-amber-300 mt-0.5"></div>
+      </div>
+
+      <button id="res-continue-btn" class="wow-btn w-full py-3 rounded-xl font-cinzel font-black text-sm text-white uppercase tracking-wider">
+        ⚔️ Continuar
+      </button>
     </div>
   </div>
 
-  <!-- CABECERA -->
-  <header class="pixel-panel rounded-xl p-3 mb-2 flex flex-wrap items-center justify-between gap-3">
+  <!-- ========================================================================= -->
+  <!-- CABECERA SUPERIOR                                                         -->
+  <!-- ========================================================================= -->
+  <header class="wow-panel rounded-xl p-2.5 mb-2 flex flex-wrap items-center justify-between gap-2">
     <div class="flex items-center gap-3">
-      <div class="bg-amber-950/80 border border-amber-500/60 px-3 py-1 rounded text-center">
-        <div class="text-[9px] uppercase tracking-widest text-amber-300">Fase Arena</div>
-        <div id="stage-txt" class="font-cinzel font-bold text-base text-white">1 / 20</div>
+      <div class="bg-amber-950 border border-amber-500/70 px-3 py-1 rounded text-center">
+        <div class="text-[9px] uppercase tracking-widest text-amber-300">Nivel</div>
+        <div id="stage-txt" class="font-pixel text-xs text-white mt-0.5">1/20</div>
       </div>
       <div>
-        <h1 id="enemy-title" class="font-cinzel font-bold text-base text-amber-400">Fase 1: Kargath el Gladiador</h1>
-        <p class="text-[10px] text-emerald-400 font-mono">Motor Pixel Art Animado (2D Canvas)</p>
+        <h1 id="stage-title" class="font-cinzel font-black text-sm md:text-base text-amber-400">Nivel 1: Kargath Rompecráneos</h1>
+        <p id="synergy-banner" class="text-[11px] text-emerald-400 font-semibold">Sinergias Activas: Ninguna aún (Sube de nivel para desbloquear)</p>
       </div>
     </div>
-    <div class="flex items-center gap-3 text-xs">
-      <div class="bg-slate-900 border border-slate-700 px-3 py-1.5 rounded">🪙 Oro: <span id="gold-txt" class="font-bold text-amber-400">250</span></div>
-      <div class="bg-slate-900 border border-slate-700 px-3 py-1.5 rounded">Nv: <span id="lvl-txt" class="font-bold text-purple-300">1</span></div>
+
+    <div class="flex items-center gap-2.5 flex-wrap text-xs">
+      <div class="bg-slate-900 border border-slate-700 px-3 py-1.5 rounded flex items-center gap-2">
+        <span>Tu Poder: <strong id="hero-pwr" class="text-emerald-400">155</strong></span>
+        <span class="text-slate-600">vs</span>
+        <span>Rival: <strong id="enemy-pwr" class="text-red-400">165</strong></span>
+      </div>
+      <div class="bg-amber-950/50 border border-amber-600/50 px-3 py-1.5 rounded font-bold text-amber-300">
+        🪙 <span id="gold-txt">250</span> | Nv.<span id="lvl-txt">1</span>
+      </div>
+      <button id="edit-hero-btn" class="bg-slate-800 hover:bg-slate-700 border border-amber-500/50 text-amber-300 px-2.5 py-1.5 rounded font-bold">
+        🎨 Aspecto
+      </button>
     </div>
   </header>
 
-  <!-- ARENA PIXEL ART Y BARRAS DE COMBATE -->
-  <main class="relative pixel-panel rounded-xl overflow-hidden flex-1 min-h-[400px] flex flex-col justify-between mb-2">
+  <!-- ========================================================================= -->
+  <!-- ARENA DE COMBATE PIXEL ART HD                                             -->
+  <!-- ========================================================================= -->
+  <main class="relative wow-panel rounded-xl overflow-hidden flex-1 min-h-[410px] flex flex-col justify-between mb-2">
     
-    <!-- BARRAS SUPERIORES -->
-    <div class="relative z-20 grid grid-cols-2 gap-4 p-3 bg-gradient-to-b from-black/90 to-transparent">
+    <!-- HUD DE BARRAS DE VIDA, ULTIMATE Y TIEMPO DE CASTEO -->
+    <div class="relative z-20 grid grid-cols-2 gap-4 p-3 bg-gradient-to-b from-black/90 via-black/50 to-transparent">
       <!-- HÉROE -->
       <div class="space-y-1">
-        <div class="flex justify-between items-baseline text-xs">
-          <span id="hero-hud-name" class="font-cinzel font-bold text-amber-300">Maximus (Bárbaro)</span>
-          <span id="hero-hp-txt" class="font-bold text-emerald-300">700 / 700 HP</span>
+        <div class="flex justify-between items-baseline">
+          <span id="hud-hero-name" class="font-cinzel font-black text-sm md:text-base text-amber-300">Maximus (Bárbaro)</span>
+          <span id="hud-hero-hp" class="font-pixel text-[10px] text-emerald-300">720/720</span>
         </div>
-        <div class="w-full h-3 bg-slate-950 rounded-full overflow-hidden border border-slate-700 p-0.5">
-          <div id="hero-hp-bar" class="h-full bg-gradient-to-r from-emerald-600 to-green-400 rounded-full transition-all" style="width: 100%"></div>
+        <div class="w-full h-4 bg-slate-950 rounded overflow-hidden border-2 border-slate-700 p-0.5">
+          <div id="hero-hp-bar" class="h-full bg-gradient-to-r from-emerald-600 to-lime-400 transition-all duration-150" style="width:100%"></div>
         </div>
-        <div class="w-full h-2 bg-slate-950 rounded-full overflow-hidden border border-amber-900">
-          <div id="hero-ult-bar" class="h-full bg-gradient-to-r from-amber-500 to-yellow-300 transition-all" style="width: 0%"></div>
+        <div class="flex items-center gap-2">
+          <span class="text-[10px] font-bold uppercase text-amber-400">Ultimate</span>
+          <div class="flex-1 h-2.5 bg-slate-950 rounded overflow-hidden border border-amber-800">
+            <div id="hero-ult-bar" class="h-full bg-gradient-to-r from-amber-600 via-yellow-400 to-white transition-all duration-150" style="width:0%"></div>
+          </div>
+        </div>
+        <!-- Barra de Casteo de Ultimate del Héroe -->
+        <div id="hero-cast-box" class="hidden bg-amber-950/95 border border-amber-400 rounded px-2 py-1 mt-1">
+          <div class="flex justify-between text-[10px] font-bold text-amber-200">
+            <span id="hero-cast-label">⚡ CASTEANDO ULTIMATE...</span>
+            <span id="hero-cast-timer">1.4s</span>
+          </div>
+          <div class="w-full h-1.5 bg-black rounded overflow-hidden mt-0.5">
+            <div id="hero-cast-bar" class="h-full bg-amber-400" style="width:0%"></div>
+          </div>
         </div>
       </div>
 
-      <!-- ENEMIGO -->
+      <!-- ENEMIGO / JEFE -->
       <div class="space-y-1 text-right">
-        <div class="flex justify-between items-baseline text-xs">
-          <span id="enemy-hp-txt" class="font-bold text-red-300">700 / 700 HP</span>
-          <span id="enemy-hud-name" class="font-cinzel font-bold text-red-400">Kargath</span>
+        <div class="flex justify-between items-baseline">
+          <span id="hud-enemy-hp" class="font-pixel text-[10px] text-red-300">750/750</span>
+          <div>
+            <span id="enemy-boss-tag" class="bg-red-900 border border-red-400 text-red-100 text-[10px] px-1.5 py-0.5 rounded font-bold mr-1">ÉLITE</span>
+            <span id="hud-enemy-name" class="font-cinzel font-black text-sm md:text-base text-red-400">Kargath</span>
+          </div>
         </div>
-        <div class="w-full h-3 bg-slate-950 rounded-full overflow-hidden border border-slate-700 p-0.5">
-          <div id="enemy-hp-bar" class="h-full bg-gradient-to-l from-red-600 to-rose-400 rounded-full transition-all ml-auto" style="width: 100%"></div>
+        <div class="w-full h-4 bg-slate-950 rounded overflow-hidden border-2 border-slate-700 p-0.5">
+          <div id="enemy-hp-bar" class="h-full bg-gradient-to-l from-red-600 to-orange-400 transition-all duration-150 ml-auto" style="width:100%"></div>
         </div>
-        <div class="w-full h-2 bg-slate-950 rounded-full overflow-hidden border border-red-900">
-          <div id="enemy-ult-bar" class="h-full bg-gradient-to-l from-purple-600 to-fuchsia-400 transition-all ml-auto" style="width: 0%"></div>
+        <div class="flex items-center gap-2">
+          <div class="flex-1 h-2.5 bg-slate-950 rounded overflow-hidden border border-purple-800">
+            <div id="enemy-ult-bar" class="h-full bg-gradient-to-l from-purple-600 via-fuchsia-400 to-pink-200 transition-all duration-150 ml-auto" style="width:0%"></div>
+          </div>
+          <span class="text-[10px] font-bold uppercase text-fuchsia-400">Amenaza</span>
+        </div>
+        <!-- Barra de Casteo Enemigo (Interrumpible con [1]) -->
+        <div id="enemy-cast-box" class="hidden bg-red-950/95 border-2 border-red-400 rounded px-2 py-1 mt-1 animate-pulse">
+          <div class="flex justify-between text-[10px] font-black text-yellow-200">
+            <span id="enemy-cast-label">⚠️ ¡CASTEANDO ULTIMATE! [PULSA 1 INTERRUMPIR]</span>
+            <span id="enemy-cast-timer">1.6s</span>
+          </div>
+          <div class="w-full h-2 bg-black rounded overflow-hidden mt-0.5">
+            <div id="enemy-cast-bar" class="h-full bg-gradient-to-r from-yellow-400 to-red-600" style="width:0%"></div>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- CANVAS DE PIXEL ART -->
-    <div id="viewport" class="relative flex-1 w-full h-[280px]">
-      <canvas id="pixel-canvas" class="absolute inset-0 w-full h-full block"></canvas>
-      <div id="popups" class="absolute inset-0 pointer-events-none overflow-hidden"></div>
+    <!-- LIENZO PIXEL ART DE ALTA DEFINICIÓN -->
+    <div id="arena-wrap" class="relative flex-1 w-full min-h-[260px]">
+      <canvas id="arena-canvas" class="absolute inset-0 w-full h-full block"></canvas>
+      <div id="floating-layer" class="absolute inset-0 pointer-events-none overflow-hidden"></div>
     </div>
 
-    <!-- BOTONES TÁCTICOS -->
-    <div class="relative z-20 bg-slate-950/95 border-t border-amber-900/60 p-3 flex flex-wrap items-center justify-between gap-2">
+    <!-- BARRA TÁCTICA INFERIOR (ANTI-AFK + DEMOSTRACIÓN DE ANIMACIONES) -->
+    <div class="relative z-20 bg-slate-950/95 border-t-2 border-amber-900/70 px-3 py-2.5 flex flex-wrap items-center justify-between gap-2">
+      <div class="flex items-center gap-2 flex-wrap">
+        <button id="btn-interrupt" class="bg-amber-900/90 hover:bg-amber-800 border-2 border-amber-400 text-amber-100 px-3 py-1.5 rounded text-xs font-bold flex items-center gap-1.5">
+          <span class="font-pixel text-[9px] bg-black/60 px-1.5 py-0.5 rounded text-amber-300">[1]</span>
+          <span>🦶 Patada Interrumpir</span>
+          <span id="cd-int-txt" class="text-[10px] text-amber-300 ml-1">Listo</span>
+        </button>
+
+        <button id="btn-shield" class="bg-cyan-950/90 hover:bg-cyan-900 border-2 border-cyan-400 text-cyan-100 px-3 py-1.5 rounded text-xs font-bold flex items-center gap-1.5">
+          <span class="font-pixel text-[9px] bg-black/60 px-1.5 py-0.5 rounded text-cyan-300">[2]</span>
+          <span>🛡️ Escudo (-65% Daño)</span>
+          <span id="cd-shd-txt" class="text-[10px] text-cyan-300 ml-1">Listo</span>
+        </button>
+
+        <button id="btn-potion" class="bg-emerald-950/90 hover:bg-emerald-900 border-2 border-emerald-400 text-emerald-100 px-3 py-1.5 rounded text-xs font-bold flex items-center gap-1.5">
+          <span class="font-pixel text-[9px] bg-black/60 px-1.5 py-0.5 rounded text-emerald-300">[3]</span>
+          <span>🧪 Poción (+40% HP)</span>
+          <span id="pot-txt" class="bg-emerald-800 px-1.5 rounded text-[10px]">2/2</span>
+        </button>
+      </div>
+
       <div class="flex items-center gap-2">
-        <button id="btn-interrupt" class="pixel-btn px-3 py-1.5 rounded text-xs font-bold text-amber-200">
-          [1] 🦶 Interrumpir
+        <button id="demo-slash-btn" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 px-2.5 py-1.5 rounded text-xs font-semibold">
+          🎬 Ver Tajo
         </button>
-        <button id="btn-shield" class="pixel-btn px-3 py-1.5 rounded text-xs font-bold text-cyan-200">
-          [2] 🛡️ Escudo (-65%)
+        <button id="demo-ult-btn" class="bg-purple-950 hover:bg-purple-900 border border-purple-400 text-purple-200 px-2.5 py-1.5 rounded text-xs font-semibold">
+          ⚡ Ver Ultimate
         </button>
-        <button id="btn-potion" class="pixel-btn px-3 py-1.5 rounded text-xs font-bold text-emerald-200">
-          [3] 🧪 Poción (<span id="potions-txt">2</span>)
+        <button id="fight-btn" class="wow-btn px-6 py-2 rounded-lg font-cinzel font-black text-sm text-white uppercase tracking-wider">
+          ⚔️ ¡INICIAR COMBATE!
         </button>
       </div>
-      <button id="btn-fight" class="pixel-btn px-6 py-2 rounded font-cinzel font-black text-sm text-white uppercase tracking-wider">
-        ⚔️ ¡LUCHAR!
-      </button>
     </div>
   </main>
 
-  <!-- REGISTRO DE COMBATE Y ATRIBUTOS -->
-  <section class="pixel-panel rounded-xl p-3 grid grid-cols-1 md:grid-cols-2 gap-3">
-    <div>
-      <div class="flex justify-between items-center text-xs font-bold text-amber-400 border-b border-slate-800 pb-1 mb-2">
-        <span>🛡️ Atributos (Puntos: <span id="pts-txt">2</span>)</span>
+  <!-- ========================================================================= -->
+  <!-- PANELES INFERIORES: ATRIBUTOS/EQUIPO, HABILIDADES ALEATORIAS Y CRÓNICA    -->
+  <!-- ========================================================================= -->
+  <section class="wow-panel rounded-xl p-3 grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <!-- 1. ATRIBUTOS Y ARMERÍA (ARMAS, ARMADURAS Y ESCUDOS) -->
+    <div class="bg-slate-900/80 border border-slate-800 rounded-lg p-3 flex flex-col justify-between">
+      <div>
+        <div class="flex justify-between items-center border-b border-slate-800 pb-1.5 mb-2">
+          <h3 class="font-cinzel font-bold text-sm text-amber-400">🛡️ Atributos y Equipo</h3>
+          <span id="stat-pts-badge" class="bg-amber-500 text-black text-[11px] font-black px-2 py-0.5 rounded">Puntos: 2</span>
+        </div>
+        <div class="grid grid-cols-3 gap-2 text-center mb-2.5">
+          <div class="bg-slate-950 p-1.5 rounded border border-slate-800">
+            <div class="text-[10px] text-slate-400">ATAQUE</div>
+            <div id="ui-atk" class="font-bold text-sm text-red-400">50</div>
+            <button data-stat="atk" class="add-stat-btn mt-1 w-full bg-amber-700 hover:bg-amber-600 text-white text-[10px] font-bold py-0.5 rounded">+6 ATQ</button>
+          </div>
+          <div class="bg-slate-950 p-1.5 rounded border border-slate-800">
+            <div class="text-[10px] text-slate-400">VIDA MÁX</div>
+            <div id="ui-hp" class="font-bold text-sm text-emerald-400">720</div>
+            <button data-stat="hp" class="add-stat-btn mt-1 w-full bg-amber-700 hover:bg-amber-600 text-white text-[10px] font-bold py-0.5 rounded">+110 HP</button>
+          </div>
+          <div class="bg-slate-950 p-1.5 rounded border border-slate-800">
+            <div class="text-[10px] text-slate-400">DEFENSA</div>
+            <div id="ui-def" class="font-bold text-sm text-cyan-400">16%</div>
+            <button data-stat="def" class="add-stat-btn mt-1 w-full bg-amber-700 hover:bg-amber-600 text-white text-[10px] font-bold py-0.5 rounded">+4% DEF</button>
+          </div>
+        </div>
       </div>
-      <div class="grid grid-cols-3 gap-2 text-center text-xs">
-        <div class="bg-slate-950 p-2 rounded border border-slate-800">
-          <div class="text-[10px] text-slate-400">ATQ</div>
-          <div id="stat-atk" class="font-bold text-red-400">48</div>
-          <button data-stat="atk" class="stat-btn mt-1 w-full bg-amber-700 hover:bg-amber-600 text-white text-[10px] py-0.5 rounded">+6</button>
+      <div id="shop-container" class="space-y-1.5 max-h-28 overflow-y-auto pr-1"></div>
+    </div>
+
+    <!-- 2. HABILIDADES ALEATORIAS CON SINERGIAS Y CAMBIO DE NATURALEZA -->
+    <div class="bg-slate-900/80 border border-slate-800 rounded-lg p-3 flex flex-col justify-between">
+      <div>
+        <div class="flex justify-between items-center border-b border-slate-800 pb-1.5 mb-2">
+          <h3 class="font-cinzel font-bold text-sm text-purple-400">🎲 Habilidades Aleatorias y Sinergias</h3>
+          <button id="roll-skill-btn" class="bg-purple-700 hover:bg-purple-600 border border-purple-400 text-white text-[11px] font-bold px-2.5 py-0.5 rounded">
+            Ruleta (120 🪙)
+          </button>
         </div>
-        <div class="bg-slate-950 p-2 rounded border border-slate-800">
-          <div class="text-[10px] text-slate-400">HP</div>
-          <div id="stat-hp" class="font-bold text-emerald-400">700</div>
-          <button data-stat="hp" class="stat-btn mt-1 w-full bg-amber-700 hover:bg-amber-600 text-white text-[10px] py-0.5 rounded">+100</button>
+        <div id="skills-grid" class="grid grid-cols-2 gap-1.5 max-h-28 overflow-y-auto pr-1 text-xs"></div>
+      </div>
+
+      <div class="mt-2 pt-2 border-t border-slate-800 flex items-center justify-between text-xs">
+        <div>
+          <span class="text-slate-400">Naturaleza:</span>
+          <span id="ui-nature" class="font-bold text-amber-300 ml-1">Valiente</span>
         </div>
-        <div class="bg-slate-950 p-2 rounded border border-slate-800">
-          <div class="text-[10px] text-slate-400">DEF</div>
-          <div id="stat-def" class="font-bold text-cyan-400">16%</div>
-          <button data-stat="def" class="stat-btn mt-1 w-full bg-amber-700 hover:bg-amber-600 text-white text-[10px] py-0.5 rounded">+4%</button>
-        </div>
+        <button id="change-nature-btn" class="bg-slate-800 hover:bg-slate-700 border border-amber-500/50 text-amber-300 px-2 py-1 rounded text-[11px] font-bold">
+          Cambiar (1500 🪙)
+        </button>
       </div>
     </div>
 
-    <div>
-      <div class="text-xs font-bold text-amber-400 border-b border-slate-800 pb-1 mb-2">📜 Crónica de la Arena</div>
-      <div id="combat-log" class="h-20 overflow-y-auto space-y-1 text-xs font-mono text-slate-300">
-        <div class="text-amber-300">» ¡Gladiador listo! Gasta tus puntos de atributo y pulsa "¡LUCHAR!".</div>
+    <!-- 3. REGISTRO DE COMBATE -->
+    <div class="bg-slate-900/80 border border-slate-800 rounded-lg p-3 flex flex-col justify-between">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-1.5 mb-2">
+        <h3 class="font-cinzel font-bold text-sm text-amber-400">📜 Crónicas de Batalla</h3>
+        <span class="text-[10px] text-slate-400">16-Bit Art Engine</span>
+      </div>
+      <div id="combat-log" class="h-32 overflow-y-auto space-y-1 text-xs font-mono text-slate-300 pr-1">
+        <div class="text-amber-300">» Personaliza tu campeón en la ventana inicial o pulsa "🎬 Ver Tajo / ⚡ Ver Ultimate" para admirar las animaciones Pixel Art.</div>
       </div>
     </div>
   </section>
 
-  <!-- MOTOR DE ANIMACIÓN PIXEL ART EN 2D CANVAS -->
+  <!-- ========================================================================= -->
+  <!-- MOTOR COMPLETO JAVASCRIPT: SPRITES PIXEL ART ARTICULADOS + COMBATE        -->
+  <!-- ========================================================================= -->
   <script>
+    // =========================================================================
+    // 1. WEB AUDIO API (SONIDOS RETRO 16-BIT DE IMPACTO, MAGIA Y FANFARRIA)
+    // =========================================================================
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
+    function playSfx(type) {
+      try {
+        if (!audioCtx) audioCtx = new AudioCtx();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        if (type === 'slash') {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(340, now);
+          osc.frequency.exponentialRampToValueAtTime(65, now + 0.13);
+          gain.gain.setValueAtTime(0.18, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.13);
+          osc.start(now); osc.stop(now + 0.13);
+        } else if (type === 'crit') {
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(620, now);
+          osc.frequency.exponentialRampToValueAtTime(120, now + 0.22);
+          gain.gain.setValueAtTime(0.24, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.22);
+          osc.start(now); osc.stop(now + 0.22);
+        } else if (type === 'ult') {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(120, now);
+          osc.frequency.exponentialRampToValueAtTime(760, now + 0.45);
+          gain.gain.setValueAtTime(0.25, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.45);
+          osc.start(now); osc.stop(now + 0.45);
+        } else if (type === 'win') {
+          [261.6, 329.6, 392.0, 523.2].forEach((f, i) => {
+            const o = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            o.type = 'square';
+            o.frequency.setValueAtTime(f, now + i * 0.1);
+            g.gain.setValueAtTime(0.15, now + i * 0.1);
+            g.gain.exponentialRampToValueAtTime(0.008, now + i * 0.1 + 0.3);
+            o.connect(g); g.connect(audioCtx.destination);
+            o.start(now + i * 0.1); o.stop(now + i * 0.1 + 0.3);
+          });
+        }
+      } catch (e) {}
+    }
+
+    // =========================================================================
+    // 2. DATOS DE CLASES, NATURALEZAS, SINERGIAS Y BOTÍN
+    // =========================================================================
     const CLASSES = {
-      barbarian: { name: 'Bárbaro', hp: 700, atk: 48, def: 16, weapon: 'axe' },
-      warrior:   { name: 'Mirmillón', hp: 790, atk: 42, def: 28, weapon: 'sword' },
-      samurai:   { name: 'Samurái', hp: 640, atk: 55, def: 15, weapon: 'katana' },
-      mage:      { name: 'Evocador', hp: 590, atk: 60, def: 14, weapon: 'staff' },
-      warlock:   { name: 'Brujo Vil', hp: 650, atk: 53, def: 16, weapon: 'scythe' }
+      barbarian: { name: 'Bárbaro', hp: 720, atk: 50, def: 16, spd: 1.0, ultName: 'Torbellino Sangriento', weapon: 'axe', shield: false },
+      warrior:   { name: 'Guerrero', hp: 810, atk: 43, def: 28, spd: 0.95, ultName: 'Espada del Olimpo', weapon: 'sword', shield: true },
+      samurai:   { name: 'Samurái', hp: 650, atk: 57, def: 15, spd: 1.18, ultName: 'Corte Lunar Iaido', weapon: 'katana', shield: false },
+      mage:      { name: 'Mago', hp: 600, atk: 62, def: 14, spd: 1.05, ultName: 'Lluvia de Meteoros', weapon: 'staff', shield: false },
+      warlock:   { name: 'Hechicero', hp: 660, atk: 55, def: 16, spd: 1.02, ultName: 'Pilar de Fuego Vil', weapon: 'scythe', shield: false }
+    };
+
+    const NATURES = {
+      valiente: { name: 'Valiente', desc: '+22% Crítico / -15% Defensa', crit: 0.22, atkM: 1.0, defM: 0.85, hpM: 1.0, spdM: 1.0 },
+      feroz:    { name: 'Sanguinario', desc: '+28% Daño / -18% Vida Máx', crit: 0.05, atkM: 1.28, defM: 1.0, hpM: 0.82, spdM: 1.05 },
+      coloso:   { name: 'Colosal', desc: '+28% Defensa / -15% Velocidad', crit: 0.0, atkM: 1.0, defM: 1.28, hpM: 1.15, spdM: 0.85 }
+    };
+
+    const SKILLS = [
+      { id: 'vamp', name: 'Sed de Sangre', type: 'ATQ', desc: 'Roba 12% del daño como vida por nivel.' },
+      { id: 'crit', name: 'Furia Crítica', type: 'ATQ', desc: '+10% Prob. Crítico adicional por nivel.' },
+      { id: 'thorns', name: 'Coraza Espinosa', type: 'DEF', desc: 'Refleja 20% del daño recibido al atacante.' },
+      { id: 'granite', name: 'Piel de Granito', type: 'DEF', desc: '+7% Defensa extra por nivel.' }
+    ];
+
+    const SHOP_ITEMS = [
+      { id: 'w1', name: '🗡️ Hacha Gorehowl', slot: 'weapon', atk: 22, hp: 60, def: 0, cost: 180, color: '#f97316' },
+      { id: 'a1', name: '🛡️ Coraza de Ventormenta', slot: 'armor', atk: 5, hp: 220, def: 8, cost: 240, color: '#38bdf8' },
+      { id: 's1', name: '🔰 Escudo Baluarte Real', slot: 'shield', atk: 8, hp: 180, def: 12, cost: 320, color: '#facc15' },
+      { id: 'w2', name: '⚔️ Espadón Agonía Escarcha', slot: 'weapon', atk: 52, hp: 200, def: 5, cost: 580, color: '#22d3ee' }
+    ];
+
+    const BOSS_LOOT = {
+      5:  { id: 'b5', name: '🔥 Martillo Doomhammer (Épico)', slot: 'weapon', atk: 48, hp: 250, def: 6, color: '#ef4444' },
+      10: { id: 'b10', name: '💚 Guja Vil de Illidan (Épico)', slot: 'weapon', atk: 82, hp: 420, def: 10, color: '#10b981' },
+      15: { id: 'b15', name: '⚡ Ashbringer Sagrada (Legendaria)', slot: 'weapon', atk: 125, hp: 680, def: 14, color: '#facc15' },
+      20: { id: 'b20', name: '👑 Espada de Sargeras (Mítica)', slot: 'weapon', atk: 190, hp: 1100, def: 20, color: '#a855f7' }
     };
 
     const state = {
-      name: 'Maximus', cls: 'barbarian', gender: 'male', color: '#f59e0b', nature: 'valiente',
-      level: 1, stage: 1, gold: 250, statPts: 2,
-      baseAtk: 48, baseHp: 700, baseDef: 16,
-      inCombat: false, hp: 700, maxHp: 700, ult: 0, shield: 0, potions: 2,
-      enemyName: 'Kargath el Gladiador', enemyHp: 720, enemyMaxHp: 720, enemyUlt: 0, stun: 0
+      name: 'Maximus',
+      cls: 'barbarian',
+      gender: 'male',
+      hairStyle: 'mane',
+      hairColor: '#f59e0b',
+      eyeColor: '#38bdf8',
+      armorColor: '#d97706',
+      nature: 'valiente',
+
+      level: 1,
+      stage: 1,
+      gold: 250,
+      statPts: 2,
+      baseAtk: 50,
+      baseHp: 720,
+      baseDef: 16,
+
+      equip: { weapon: null, armor: null, shield: null },
+      owned: new Set(),
+      skills: { vamp: 1 },
+
+      inCombat: false,
+      hp: 720, maxHp: 720, ult: 0, casting: null, shieldBuff: 0, guaranteedCrit: false, potions: 2,
+      cdInt: 0, cdShd: 0, missedInt: 0,
+
+      enemy: null,
+      enemyHp: 750, enemyMaxHp: 750, enemyUlt: 0, enemyCasting: null, enemyStun: 0
     };
 
-    const canvas = document.getElementById('pixel-canvas');
-    const ctx = canvas.getContext('2d');
-    const viewport = document.getElementById('viewport');
-
-    function resizeCanvas() {
-      canvas.width = viewport.clientWidth || 800;
-      canvas.height = viewport.clientHeight || 280;
+    // =========================================================================
+    // 3. MOTOR GRÁFICO PIXEL ART DE ALTA DENSIDAD (MATRICES + RIG ARTICULADO)
+    // =========================================================================
+    // Función auxiliar que pinta una matriz de píxeles con escala `ps` (Pixel Size)
+    function drawPixelMatrix(ctx, matrix, palette, ox, oy, ps = 4) {
+      for (let r = 0; r < matrix.length; r++) {
+        const row = matrix[r];
+        for (let c = 0; c < row.length; c++) {
+          const ch = row[c];
+          if (ch !== '.' && palette[ch]) {
+            ctx.fillStyle = palette[ch];
+            ctx.fillRect(Math.floor(ox + c * ps), Math.floor(oy + r * ps), ps, ps);
+          }
+        }
+      }
     }
-    window.addEventListener('resize', resizeCanvas);
-    resizeCanvas();
 
-    // Animaciones de sprites en Pixel Art con distinción de género
-    let animFrame = 0;
-    let heroX = 120, enemyX = 0;
-    let heroAction = 'idle', enemyAction = 'idle';
+    // MATRICES PIXEL ART DETALLADAS (Borde O = #090d16, S = Piel, s = Sombra Piel, E = Ojo, W = Blanco, A = Armadura, a = Sombra, H = Luz, G = Oro, M = Acero)
+    const HEAD_MALE = [
+      "..OOOOOOOO..",
+      ".OSSSSSSSSO.",
+      ".OSSSSSSSSO.",
+      "OSSWEOSSWESO",
+      "OSSSSSSSSSSO",
+      "OSSsSSSSsSSO",
+      ".OSSssssSSO.",
+      "..OOOOOOOO.."
+    ];
 
-    function drawPixelFighter(x, y, isHero, action, cls, gender, colorHex) {
+    const HEAD_FEMALE = [
+      "..OOOOOOOO..",
+      ".OSSSSSSSSO.",
+      ".OSSWEOSSWEO",
+      ".OSSSSSSSSSO",
+      ".OSSsSSsSSSO",
+      "..OSSSSSSSO.",
+      "...OOOOOOO.."
+    ];
+
+    const TORSO_MALE = [
+      ".OOOOOOOOOOOO.",
+      "OAAHAAAAAAHAAO",
+      "OAAAAAGGAAAAAO",
+      "OaaAAAGGGAAaaO",
+      ".OaaAAAAAaaaO.",
+      ".OGGGGGGGGGG0.",
+      "..OaaAAAAaaO..",
+      "..OOOOOOOOOO.."
+    ];
+
+    const TORSO_FEMALE = [
+      "..OOOOOOOOOO..",
+      ".OAAHAAAAHAAO.",
+      ".OAAAAGGAAAAO.",
+      "..OaaAAAAaaO..",
+      "..OGGGGGGGGO..",
+      ".OAAHAAAAHAAO.",
+      ".OaaAAAAAAaaO.",
+      "..OOOOOOOOOO.."
+    ];
+
+    const PAULDRON_PIXEL = [
+      ".OOOOOO.",
+      "OMMHHMMO",
+      "OAAAAAAO",
+      "OaaGGaaO",
+      ".OOOOOO."
+    ];
+
+    const SHIELD_PIXEL = [
+      ".OOOOOOOO.",
+      "OGGMMMMGGO",
+      "OMMAAAAMMO",
+      "OMMAAGAMMO",
+      "OMMAAAAMMO",
+      ".OGGMMGGO.",
+      "..OOOOOO.."
+    ];
+
+    // ARMAS EN MATRIZ PIXEL ART (Con filo luminoso, mango y guardia)
+    const WEAPONS_MATRIX = {
+      axe: [
+        "....OOOO....",
+        "..OOMMMHOO..",
+        ".OMMMGGMMHO.",
+        "OMMMGGGGMMHO",
+        "OMMMGGMMHHOO",
+        ".OOMMGGMOO..",
+        "...OOGGOO...",
+        "....OGGO....",
+        "....OGGO....",
+        "....OGGO....",
+        "....OGGO....",
+        "....OOOO...."
+      ],
+      sword: [
+        ".....OO.....",
+        "....OMHO....",
+        "....OMHO....",
+        "....OMHO....",
+        "....OMHO....",
+        "....OMHO....",
+        "....OMHO....",
+        "..OOGGGGOO..",
+        "..OOOOOOOO..",
+        "....OGGO....",
+        "....OGGO....",
+        "....OOOO...."
+      ],
+      katana: [
+        "......OO....",
+        ".....OMHO...",
+        "....OMHO....",
+        "....OMHO....",
+        "...OMHO.....",
+        "...OMHO.....",
+        "...OMHO.....",
+        "..OOGGGGO...",
+        "...OGGO.....",
+        "...OGGO.....",
+        "...OOOO....."
+      ],
+      staff: [
+        "...OOOOOO...",
+        "..OHHHHHHO..",
+        ".OHHGGGGHHO.",
+        "..OHHHHHHO..",
+        "...OOGGOO...",
+        "....OGGO....",
+        "....OGGO....",
+        "....OGGO....",
+        "....OGGO....",
+        "....OGGO....",
+        "....OGGO....",
+        "....OOOO...."
+      ],
+      scythe: [
+        "..OOOOOOOOOO",
+        ".OHHHHHHHHH0",
+        "OHHMMGGGGGO.",
+        "OOMMOOOGGO..",
+        "......OGGO..",
+        "......OGGO..",
+        "......OGGO..",
+        "......OGGO..",
+        "......OGGO..",
+        "......OGGO..",
+        "......OOOO.."
+      ]
+    };
+
+    // Estado de animación de los dos combatientes en la Arena
+    const animState = {
+      hero: {
+        x: 0, baseX: 0, y: 0,
+        phase: 'idle', // 'idle' | 'windup' | 'dash' | 'slash' | 'recover' | 'cast' | 'hurt'
+        timer: 0,
+        armAngle: 0,
+        slashTrail: 0,
+        hurtFlash: 0
+      },
+      enemy: {
+        x: 0, baseX: 0, y: 0,
+        phase: 'idle',
+        timer: 0,
+        armAngle: 0,
+        slashTrail: 0,
+        hurtFlash: 0
+      }
+    };
+
+    const particles = [];
+    let hitStopTimer = 0;
+    let screenShake = 0;
+    let globalTick = 0;
+
+    // Dibuja un Campeón Pixel Art completo y articulado en cualquier Canvas
+    function renderArticulatedPixelFighter(ctx, cx, cy, cfg, aState, facingRight, ps = 4) {
       ctx.save();
-      ctx.translate(x, y);
-      if (!isHero) ctx.scale(-1, 1); // Voltear sprite enemigo
+      ctx.translate(Math.floor(cx), Math.floor(cy));
+      if (!facingRight) ctx.scale(-1, 1);
 
-      const bob = Math.sin(animFrame * 0.15) * 3;
-      const attackOffset = action === 'attack' ? 25 : 0;
-      ctx.translate(attackOffset, bob);
+      const isMoving = aState.phase === 'dash' || aState.phase === 'recover';
+      const bob = isMoving ? Math.abs(Math.sin(globalTick * 0.45)) * -6 : Math.sin(globalTick * 0.12) * 3;
+      const castLift = aState.phase === 'cast' ? -14 + Math.sin(globalTick * 0.25) * 4 : 0;
 
-      // Sombra en el suelo
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
-      ctx.beginPath();
-      ctx.ellipse(0, 75, 30, 8, 0, 0, Math.PI * 2);
-      ctx.fill();
+      // Sombra elíptica pixelada en el suelo
+      ctx.fillStyle = 'rgba(0,0,0,0.55)';
+      ctx.fillRect(-10 * ps, 15 * ps, 20 * ps, 2 * ps);
+      ctx.fillRect(-7 * ps, 14 * ps, 14 * ps, 4 * ps);
 
-      // Silueta y Capa / Vestimenta según género
-      ctx.fillStyle = colorHex;
-      if (gender === 'female') {
-        // Estilo estilizado / coleta
-        ctx.fillRect(-14, 10, 28, 45); // Torso armadura
-        ctx.fillStyle = '#1e293b';
-        ctx.fillRect(-10, -15, 20, 22); // Cabeza
-        ctx.fillStyle = colorHex;
-        ctx.fillRect(8, -12, 12, 25); // Coleta cabello
-      } else {
-        // Estilo robusto masculino
-        ctx.fillRect(-18, 5, 36, 48); // Torso ancho
-        ctx.fillStyle = '#1e293b';
-        ctx.fillRect(-12, -16, 24, 22); // Cabeza
+      // Círculo Rúnico Pixelado si está casteando Ultimate o con Escudo Activo
+      if (aState.phase === 'cast' || cfg.shieldActive) {
+        ctx.fillStyle = cfg.shieldActive ? '#22d3ee' : '#facc15';
+        const rWidth = 14 * ps + Math.floor(Math.sin(globalTick * 0.3) * 2) * ps;
+        ctx.fillRect(-rWidth, 14 * ps, rWidth * 2, ps);
+        ctx.fillRect(-rWidth + 2 * ps, 12 * ps, rWidth * 2 - 4 * ps, ps);
       }
 
-      // Casco / Corona según clase
-      ctx.fillStyle = '#cbd5e1';
-      ctx.fillRect(-14, -20, 28, 8);
-      if (cls === 'barbarian') {
-        ctx.fillRect(-18, -28, 6, 12);
-        ctx.fillRect(12, -28, 6, 12);
+      ctx.translate(0, Math.floor(bob + castLift));
+
+      // Paleta dinámica del luchador (Si recibe daño se ilumina en blanco/rojo puro)
+      const flash = aState.hurtFlash > 0;
+      const palette = {
+        O: '#090d16',
+        S: flash ? '#ffffff' : '#fcd34d',
+        s: flash ? '#fca5a5' : '#d97706',
+        W: '#ffffff',
+        E: cfg.eyeColor || '#38bdf8',
+        A: flash ? '#ef4444' : (cfg.armorColor || '#d97706'),
+        a: flash ? '#991b1b' : '#1e293b',
+        H: '#fef08a',
+        G: '#facc15',
+        M: '#cbd5e1',
+        C: cfg.hairColor || '#f59e0b'
+      };
+
+      // 1. CAPA PIXELADA ONDEANDO AL VIENTO (Detrás del torso)
+      const capeWave = Math.floor(Math.sin(globalTick * 0.15) * 2);
+      ctx.fillStyle = '#090d16';
+      ctx.fillRect((-9 + capeWave) * ps, -4 * ps, 6 * ps, 15 * ps);
+      ctx.fillStyle = palette.A;
+      ctx.fillRect((-8 + capeWave) * ps, -3 * ps, 4 * ps, 13 * ps);
+
+      // 2. PIERNAS ARTICULADAS CON BOTAS ACORAZADAS (Ciclo real al correr)
+      const stride = isMoving ? Math.floor(Math.sin(globalTick * 0.55) * 4) : 0;
+      // Pierna trasera
+      ctx.fillStyle = '#090d16';
+      ctx.fillRect((-4 - stride) * ps, 5 * ps, 4 * ps, 10 * ps);
+      ctx.fillStyle = '#475569';
+      ctx.fillRect((-3 - stride) * ps, 6 * ps, 2 * ps, 5 * ps);
+      ctx.fillStyle = palette.A;
+      ctx.fillRect((-3 - stride) * ps, 11 * ps, 3 * ps, 3 * ps);
+
+      // Pierna delantera
+      ctx.fillStyle = '#090d16';
+      ctx.fillRect((1 + stride) * ps, 5 * ps, 4 * ps, 10 * ps);
+      ctx.fillStyle = '#64748b';
+      ctx.fillRect((2 + stride) * ps, 6 * ps, 2 * ps, 5 * ps);
+      ctx.fillStyle = palette.A;
+      ctx.fillRect((2 + stride) * ps, 11 * ps, 3 * ps, 3 * ps);
+
+      // 3. TORSO DIFERENCIADO (MASCULINO ROBUSTO VS FEMENINO ESTILIZADO)
+      const torsoMat = cfg.gender === 'female' ? TORSO_FEMALE : TORSO_MALE;
+      drawPixelMatrix(ctx, torsoMat, palette, -7 * ps, -4 * ps, ps);
+
+      // 4. CABEZA Y ROSTRO EXPRESIVO
+      const headMat = cfg.gender === 'female' ? HEAD_FEMALE : HEAD_MALE;
+      drawPixelMatrix(ctx, headMat, palette, -6 * ps, -12 * ps, ps);
+
+      // 5. CABELLO / YELMO PERSONALIZADO (Con física de coleta larga si es Femenino o Melena)
+      if (cfg.hairStyle === 'mane') {
+        ctx.fillStyle = palette.C;
+        ctx.fillRect(-6 * ps, -13 * ps, 10 * ps, 3 * ps);
+        ctx.fillRect(-8 * ps, -11 * ps, 3 * ps, 8 * ps);
+        if (cfg.gender === 'female') {
+          // Coleta larga animada píxel a píxel
+          const hairWave = Math.floor(Math.cos(globalTick * 0.18) * 2);
+          ctx.fillRect((-10 + hairWave) * ps, -9 * ps, 3 * ps, 9 * ps);
+        }
+      } else if (cfg.hairStyle === 'mohawk') {
+        ctx.fillStyle = palette.C;
+        ctx.fillRect(-3 * ps, -16 * ps, 6 * ps, 4 * ps);
+        ctx.fillRect(-5 * ps, -14 * ps, 2 * ps, 3 * ps);
+      } else if (cfg.hairStyle === 'horns') {
+        ctx.fillStyle = '#cbd5e1';
+        ctx.fillRect(-6 * ps, -13 * ps, 11 * ps, 3 * ps);
+        ctx.fillStyle = '#fef08a';
+        ctx.fillRect(-9 * ps, -16 * ps, 3 * ps, 4 * ps);
+        ctx.fillRect(5 * ps, -16 * ps, 3 * ps, 4 * ps);
+      } else if (cfg.hairStyle === 'knight') {
+        ctx.fillStyle = '#cbd5e1';
+        ctx.fillRect(-6 * ps, -13 * ps, 11 * ps, 8 * ps);
+        ctx.fillStyle = palette.E;
+        ctx.fillRect(-2 * ps, -10 * ps, 6 * ps, ps); // Visor luminoso
+        ctx.fillStyle = palette.A;
+        ctx.fillRect(-2 * ps, -16 * ps, 5 * ps, 3 * ps); // Penacho
+      } else if (cfg.hairStyle === 'hood') {
+        ctx.fillStyle = palette.A;
+        ctx.fillRect(-7 * ps, -14 * ps, 12 * ps, 9 * ps);
+        ctx.fillStyle = '#090d16';
+        ctx.fillRect(-3 * ps, -11 * ps, 7 * ps, 5 * ps);
+        ctx.fillStyle = palette.E;
+        ctx.fillRect(-1 * ps, -9 * ps, 2 * ps, ps);
+        ctx.fillRect(3 * ps, -9 * ps, 2 * ps, ps);
       }
 
-      // Brazos y Armas en Pixel Art
-      ctx.fillStyle = '#94a3b8';
-      ctx.fillRect(14, 15, 12, 26); // Brazo armado
-      
-      // Arma según clase
-      ctx.fillStyle = '#facc15';
-      if (cls === 'barbarian') {
-        ctx.fillRect(20, -5, 16, 32); // Hacha gigante
-      } else if (cls === 'warrior') {
-        ctx.fillRect(22, -10, 8, 40); // Espada Gladius
-      } else if (cls === 'samurai') {
-        ctx.fillRect(22, -5, 6, 45); // Katana
-      } else if (cls === 'mage') {
-        ctx.fillStyle = '#38bdf8';
-        ctx.fillRect(18, -25, 6, 65); // Bastón arcano
-      } else {
-        ctx.fillStyle = '#a855f7';
-        ctx.fillRect(18, -15, 22, 38); // Guadaña
+      // 6. HOMBRERA Y BRAZO CON ARMA (ROTACIÓN DINÁMICA DE ATAQUE)
+      ctx.save();
+      ctx.translate(2 * ps, -2 * ps);
+
+      let angle = 0;
+      if (aState.phase === 'windup') angle = -1.15; // Echa el arma hacia atrás
+      else if (aState.phase === 'slash') angle = 1.25; // Golpe violento hacia adelante
+      else if (aState.phase === 'cast') angle = -0.85 + Math.sin(globalTick * 0.4) * 0.15;
+      else angle = Math.sin(globalTick * 0.12) * 0.08;
+
+      ctx.rotate(angle);
+
+      // Hombrera (*Pauldron*)
+      drawPixelMatrix(ctx, PAULDRON_PIXEL, palette, -4 * ps, -3 * ps, ps);
+
+      // Arma Pixelada
+      const wepMatrix = WEAPONS_MATRIX[cfg.weapon] || WEAPONS_MATRIX.axe;
+      const wepPal = { ...palette, H: cfg.weaponGlow || '#fef08a' };
+      drawPixelMatrix(ctx, wepMatrix, wepPal, 0, -11 * ps, ps);
+      ctx.restore();
+
+      // 7. ESCUDO EN EL BRAZO DELANTERO (Si es Guerrero o compró Escudo)
+      if (cfg.hasShield || cfg.shieldActive) {
+        const shdOffset = cfg.shieldActive ? 3 * ps : 0;
+        drawPixelMatrix(ctx, SHIELD_PIXEL, palette, (3 + shdOffset / ps) * ps, -3 * ps, ps);
+      }
+
+      // 8. ARCO DE CORTE PIXELADO (SMEAR FRAME DE ESPADA AL ATACAR)
+      if (aState.slashTrail > 0) {
+        ctx.fillStyle = cfg.weaponGlow || '#fde047';
+        ctx.fillRect(6 * ps, -12 * ps, 4 * ps, 20 * ps);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(8 * ps, -10 * ps, 3 * ps, 16 * ps);
       }
 
       ctx.restore();
     }
 
-    function renderArena() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Dispara una secuencia completa de animación (Windup -> Dash -> Slash con Hit-Stop -> Recover)
+    function triggerFighterAttackAnimation(who, isUltimate = false) {
+      const a = animState[who];
+      const target = animState[who === 'hero' ? 'enemy' : 'hero'];
 
-      // Fondo de Arena Pixel Art (Anfiteatro Flavio)
-      ctx.fillStyle = '#0f172a';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      a.phase = 'windup';
+      setTimeout(() => {
+        a.phase = 'dash';
+        a.x = target.baseX + (who === 'hero' ? -95 : 95);
+        // Levantar polvo de la arena al correr
+        for (let i = 0; i < 6; i++) {
+          particles.push({
+            x: a.baseX, y: 215,
+            vx: (Math.random() - 0.5) * 60, vy: -Math.random() * 40,
+            size: 6, color: '#a8a29e', life: 0.35
+          });
+        }
+      }, 130);
 
-      // Suelo de piedra arena
-      ctx.fillStyle = '#27272a';
-      ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
-      ctx.fillStyle = '#3f3f46';
-      ctx.fillRect(0, canvas.height - 50, canvas.width, 6);
+      setTimeout(() => {
+        a.phase = 'slash';
+        a.slashTrail = 0.18;
+        target.hurtFlash = 0.24;
+        hitStopTimer = isUltimate ? 0.11 : 0.065; // Pausa de impacto estilo arcade
+        screenShake = isUltimate ? 12 : 6;
 
-      // Posiciones
-      heroX = canvas.width * 0.28;
-      enemyX = canvas.width * 0.72;
+        // Explosión de píxeles en el punto de impacto
+        const sparkColor = isUltimate ? '#facc15' : '#ef4444';
+        for (let i = 0; i < (isUltimate ? 28 : 14); i++) {
+          particles.push({
+            x: target.x, y: 155 + (Math.random() - 0.5) * 40,
+            vx: (Math.random() - 0.5) * 260,
+            vy: -Math.random() * 220 - 40,
+            size: isUltimate ? 8 : 5,
+            color: i % 2 === 0 ? sparkColor : '#ffffff',
+            life: 0.55
+          });
+        }
+      }, 260);
 
-      // Dibujar Héroe y Enemigo
-      drawPixelFighter(heroX, canvas.height - 75, true, heroAction, state.cls, state.gender, state.color);
-      drawPixelFighter(enemyX, canvas.height - 75, false, enemyAction, 'barbarian', 'male', '#dc2626');
+      setTimeout(() => {
+        a.phase = 'recover';
+        a.x = a.baseX;
+      }, 430);
+
+      setTimeout(() => {
+        a.phase = 'idle';
+      }, 580);
     }
 
-    // Lucha y animaciones
-    let combatTimer = 0;
-    function log(msg) {
+    // =========================================================================
+    // 4. ESCENARIO PIXEL ART DEL COLISEO Y BUCLE DE DIBUJO
+    // =========================================================================
+    const arenaCanvas = document.getElementById('arena-canvas');
+    const arenaCtx = arenaCanvas.getContext('2d');
+    const previewCanvas = document.getElementById('preview-canvas');
+    const previewCtx = previewCanvas.getContext('2d');
+
+    function resizeArena() {
+      const wrap = document.getElementById('arena-wrap');
+      arenaCanvas.width = wrap.clientWidth || 800;
+      arenaCanvas.height = wrap.clientHeight || 270;
+      animState.hero.baseX = arenaCanvas.width * 0.27;
+      animState.enemy.baseX = arenaCanvas.width * 0.73;
+      if (animState.hero.phase === 'idle') animState.hero.x = animState.hero.baseX;
+      if (animState.enemy.phase === 'idle') animState.enemy.x = animState.enemy.baseX;
+    }
+    window.addEventListener('resize', resizeArena);
+
+    function drawColosseumBackground(ctx, w, h) {
+      // Cielo nocturno pixelado
+      ctx.fillStyle = '#070a12';
+      ctx.fillRect(0, 0, w, h);
+
+      // Gradas y Arcos Romanos del Amphitheatrum Flavium
+      ctx.fillStyle = '#111827';
+      ctx.fillRect(0, h - 145, w, 85);
+
+      const archWidth = 64;
+      for (let x = 16; x < w; x += archWidth) {
+        ctx.fillStyle = '#1f2937';
+        ctx.fillRect(x, h - 135, 44, 70);
+        ctx.fillStyle = '#090d16';
+        ctx.fillRect(x + 8, h - 125, 28, 55);
+
+        // Antorchas pixeladas parpadeantes en cada columna
+        const flicker = Math.floor(Math.sin(globalTick * 0.3 + x) * 3);
+        ctx.fillStyle = '#78350f';
+        ctx.fillRect(x - 4, h - 110, 6, 16);
+        ctx.fillStyle = '#f97316';
+        ctx.fillRect(x - 6, h - 120 + flicker, 10, 10);
+        ctx.fillStyle = '#fef08a';
+        ctx.fillRect(x - 4, h - 116 + flicker, 6, 6);
+      }
+
+      // Muro del Podium
+      ctx.fillStyle = '#334155';
+      ctx.fillRect(0, h - 65, w, 10);
+
+      // Arena del Coliseo con textura pixelada
+      ctx.fillStyle = '#451a03';
+      ctx.fillRect(0, h - 55, w, 55);
+      ctx.fillStyle = '#78350f';
+      ctx.fillRect(0, h - 55, w, 6);
+    }
+
+    // =========================================================================
+    // 5. CÁLCULO DE ESTADÍSTICAS, SINERGIAS Y ENEMIGOS (NIVELES 1 AL 20)
+    // =========================================================================
+    const ENEMIES = [
+      'Kargath Rompecráneos', 'Gladiador Mirmillón', 'Valquiria de Sangre', 'Inquisidor Malakor',
+      'JEFE: Señor de la Guerra Blackhand', 'Samurái Renegado', 'Piromante Carmesí', 'Verdugo de la Arena',
+      'Gólem de Obsidiana', 'JEFE: Exarca del Fuego Vil', 'Caballero de la Muerte', 'Bruja de Escarcha',
+      'Berserker Grito de Guerra', 'Paladín Corrupto', 'JEFE: General Drakkisath', 'Maestro de Espadas',
+      'Coloso Imperial', 'Archimago Oscuro', 'Señor del Terror', 'JEFE FINAL: Sargeras el Destructor'
+    ];
+
+    function getHeroStats() {
+      const nat = NATURES[state.nature];
+      let eqAtk = 0, eqHp = 0, eqDef = 0;
+      Object.values(state.equip).forEach(it => {
+        if (it) { eqAtk += it.atk; eqHp += it.hp; eqDef += it.def; }
+      });
+
+      const graniteBonus = (state.skills.granite || 0) * 7;
+      // Sinergia automática si tienes Furia Crítica + Sed de Sangre
+      const hasCarnageSynergy = (state.skills.vamp || 0) >= 1 && (state.skills.crit || 0) >= 1;
+      const hasFortressSynergy = (state.skills.thorns || 0) >= 1 && (state.skills.granite || 0) >= 1;
+
+      const atk = Math.round((state.baseAtk + eqAtk) * nat.atkM * (hasCarnageSynergy ? 1.12 : 1.0));
+      const maxHp = Math.round((state.baseHp + eqHp) * nat.hpM);
+      const def = Math.min(72, Math.round((state.baseDef + eqDef + graniteBonus) * nat.defM));
+      const crit = Math.max(0.05, 0.15 + nat.crit + (state.skills.crit || 0) * 0.10);
+      const power = Math.round(atk * 2.2 + maxHp * 0.1 + def * 2.5);
+
+      return { atk, maxHp, def, crit, power, hasCarnageSynergy, hasFortressSynergy };
+    }
+
+    function setupStageEnemy(stage) {
+      const isBoss = stage % 5 === 0;
+      const scale = Math.pow(1.20, stage - 1);
+      const maxHp = Math.round((isBoss ? 940 : 700) * scale);
+      const atk = Math.round((isBoss ? 58 : 44) * scale);
+      const def = Math.min(55, Math.round((isBoss ? 20 : 12) + stage * 1.4));
+
+      const weps = ['axe', 'sword', 'katana', 'staff', 'scythe'];
+      const colors = ['#dc2626', '#7c3aed', '#2563eb', '#ea580c', '#059669'];
+      const hairs = ['horns', 'knight', 'mohawk', 'hood', 'mane'];
+
+      state.enemy = {
+        name: ENEMIES[(stage - 1) % ENEMIES.length],
+        isBoss, maxHp, atk, def, turn: 0,
+        gender: stage % 2 === 0 ? 'female' : 'male',
+        weapon: weps[(stage - 1) % weps.length],
+        armorColor: colors[(stage - 1) % colors.length],
+        hairStyle: isBoss ? 'horns' : hairs[(stage - 1) % hairs.length],
+        hairColor: '#e2e8f0',
+        eyeColor: '#ef4444',
+        hasShield: stage % 3 === 0
+      };
+      state.enemyHp = maxHp;
+      state.enemyMaxHp = maxHp;
+      state.enemyUlt = 0;
+      state.enemyCasting = null;
+      updateUI();
+    }
+
+    // =========================================================================
+    // 6. ACTUALIZACIÓN DE INTERFAZ Y TIENDA
+    // =========================================================================
+    function updateUI() {
+      const s = getHeroStats();
+      if (!state.inCombat) {
+        state.maxHp = s.maxHp;
+        state.hp = s.maxHp;
+      }
+
+      document.getElementById('stage-txt').textContent = `${state.stage}/20`;
+      document.getElementById('stage-title').textContent = `Nivel ${state.stage}: ${state.enemy ? state.enemy.name : ''}`;
+      document.getElementById('gold-txt').textContent = state.gold;
+      document.getElementById('lvl-txt').textContent = state.level;
+      document.getElementById('stat-pts-badge').textContent = `Puntos: ${state.statPts}`;
+
+      const synList = [];
+      if (s.hasCarnageSynergy) synList.push('🩸 Carnicero Ancestral (+12% ATQ y Doble Robo en Críticos)');
+      if (s.hasFortressSynergy) synList.push('🛡️ Fortaleza Espinosa (Espinas hacen +50% daño)');
+      document.getElementById('synergy-banner').textContent = synList.length
+        ? `Sinergias Activas: ${synList.join(' | ')}`
+        : 'Sinergias Activas: Combina habilidades ofensivas o defensivas al subir de nivel';
+
+      const ePwr = state.enemy ? Math.round(state.enemy.atk * 2.2 + state.enemy.maxHp * 0.1 + state.enemy.def * 2.5) : 160;
+      document.getElementById('hero-pwr').textContent = s.power;
+      document.getElementById('enemy-pwr').textContent = ePwr;
+
+      document.getElementById('ui-atk').textContent = s.atk;
+      document.getElementById('ui-hp').textContent = s.maxHp;
+      document.getElementById('ui-def').textContent = `${s.def}%`;
+      document.getElementById('ui-nature').textContent = `${NATURES[state.nature].name} (${NATURES[state.nature].desc})`;
+
+      document.getElementById('hud-hero-name').textContent = `${state.name} (${CLASSES[state.cls].name})`;
+      document.getElementById('hud-hero-hp').textContent = `${Math.max(0, Math.round(state.hp))}/${state.maxHp}`;
+      document.getElementById('hero-hp-bar').style.width = `${Math.max(0, (state.hp / state.maxHp) * 100)}%`;
+      document.getElementById('hero-ult-bar').style.width = `${Math.min(100, state.ult)}%`;
+
+      if (state.enemy) {
+        document.getElementById('hud-enemy-name').textContent = state.enemy.name;
+        document.getElementById('enemy-boss-tag').textContent = state.enemy.isBoss ? '👑 JEFE' : 'ÉLITE';
+        document.getElementById('hud-enemy-hp').textContent = `${Math.max(0, Math.round(state.enemyHp))}/${state.enemyMaxHp}`;
+        document.getElementById('enemy-hp-bar').style.width = `${Math.max(0, (state.enemyHp / state.enemyMaxHp) * 100)}%`;
+        document.getElementById('enemy-ult-bar').style.width = `${Math.min(100, state.enemyUlt)}%`;
+      }
+
+      document.getElementById('pot-txt').textContent = `${state.potions}/2`;
+
+      // Actualizar estadísticas en el creador de personaje
+      document.getElementById('preview-title').textContent = `${state.name} - ${CLASSES[state.cls].name}`;
+      document.getElementById('prev-hp').textContent = s.maxHp;
+      document.getElementById('prev-atk').textContent = s.atk;
+      document.getElementById('prev-def').textContent = `${s.def}%`;
+      document.getElementById('prev-ult').textContent = CLASSES[state.cls].ultName;
+
+      renderShop();
+      renderSkills();
+    }
+
+    function renderShop() {
+      const box = document.getElementById('shop-container');
+      box.innerHTML = '';
+      SHOP_ITEMS.forEach(item => {
+        const owned = state.owned.has(item.id);
+        const equipped = state.equip[item.slot] && state.equip[item.slot].id === item.id;
+        const div = document.createElement('div');
+        div.className = 'flex items-center justify-between bg-slate-950 px-2.5 py-1.5 rounded border border-slate-800 text-xs';
+        div.innerHTML = `
+          <div>
+            <span class="font-bold text-amber-300">${item.name}</span>
+            <span class="text-emerald-400 text-[11px] ml-1">+${item.atk} ATQ +${item.hp} HP</span>
+          </div>
+          <button class="px-2 py-0.5 rounded font-bold text-[11px] ${
+            equipped ? 'bg-emerald-800 text-white' : owned ? 'bg-blue-700 text-white' : 'bg-amber-600 text-black hover:bg-amber-500'
+          }">${equipped ? 'Equipado' : owned ? 'Equipar' : `${item.cost} 🪙`}</button>
+        `;
+        div.querySelector('button').addEventListener('click', () => {
+          if (equipped) return;
+          if (!owned) {
+            if (state.gold < item.cost) return logMsg('❌ Oro insuficiente para comprar este equipo.', 'text-red-400');
+            state.gold -= item.cost;
+            state.owned.add(item.id);
+          }
+          state.equip[item.slot] = item;
+          logMsg(`⚔️ Has equipado ${item.name}. ¡Tu sprite se ha actualizado!`, 'text-amber-300');
+          updateUI();
+        });
+        box.appendChild(div);
+      });
+    }
+
+    function renderSkills() {
+      const box = document.getElementById('skills-grid');
+      box.innerHTML = '';
+      Object.entries(state.skills).forEach(([id, lvl]) => {
+        const sk = SKILLS.find(s => s.id === id);
+        if (!sk) return;
+        const d = document.createElement('div');
+        d.className = 'bg-slate-950 border border-purple-800/70 rounded p-1.5';
+        d.innerHTML = `
+          <div class="flex justify-between font-bold text-purple-300 text-[11px]">
+            <span>${sk.name}</span><span>Nv.${lvl}</span>
+          </div>
+          <div class="text-[10px] text-slate-400 truncate">${sk.desc}</div>
+        `;
+        box.appendChild(d);
+      });
+    }
+
+    // =========================================================================
+    // 7. LÓGICA DE COMBATE POR TURNOS CON BARRA DE CASTEO Y ULTIMATES
+    // =========================================================================
+    let heroTurnTimer = 0;
+    let enemyTurnTimer = 0;
+
+    function spawnPopup(text, onHero, color = '#fde047', size = 'text-sm') {
+      const layer = document.getElementById('floating-layer');
+      const el = document.createElement('div');
+      el.className = `dmg-popup ${size}`;
+      el.style.color = color;
+      el.style.left = onHero ? '23%' : '68%';
+      el.style.top = '34%';
+      el.textContent = text;
+      layer.appendChild(el);
+      setTimeout(() => el.remove(), 950);
+    }
+
+    function logMsg(msg, cls = 'text-slate-300') {
       const box = document.getElementById('combat-log');
-      box.innerHTML += `<div>» ${msg}</div>`;
+      const d = document.createElement('div');
+      d.className = cls;
+      d.textContent = `» ${msg}`;
+      box.appendChild(d);
       box.scrollTop = box.scrollHeight;
     }
 
-    function popText(text, isHero, color = '#facc15') {
-      const div = document.createElement('div');
-      div.className = `pop-text text-xl`;
-      div.style.color = color;
-      div.style.left = isHero ? '32%' : '66%';
-      div.style.top = '45%';
-      div.textContent = text;
-      document.getElementById('popups').appendChild(div);
-      setTimeout(() => div.remove(), 850);
+    function stepCombat(dt) {
+      if (!state.inCombat) return;
+
+      if (state.cdInt > 0) state.cdInt = Math.max(0, state.cdInt - dt);
+      if (state.cdShd > 0) state.cdShd = Math.max(0, state.cdShd - dt);
+      if (state.shieldBuff > 0) state.shieldBuff = Math.max(0, state.shieldBuff - dt);
+      if (state.enemyStun > 0) state.enemyStun = Math.max(0, state.enemyStun - dt);
+
+      document.getElementById('cd-int-txt').textContent = state.cdInt > 0 ? `${state.cdInt.toFixed(1)}s` : 'Listo';
+      document.getElementById('cd-shd-txt').textContent = state.cdShd > 0 ? `${state.cdShd.toFixed(1)}s` : 'Listo';
+
+      const s = getHeroStats();
+
+      // 1. HÉROE: CANALIZACIÓN DE ULTIMATE O ATAQUE
+      if (state.casting) {
+        animState.hero.phase = 'cast';
+        state.casting.elapsed += dt;
+        const pct = Math.min(100, (state.casting.elapsed / state.casting.duration) * 100);
+        document.getElementById('hero-cast-bar').style.width = `${pct}%`;
+        document.getElementById('hero-cast-timer').textContent = `${Math.max(0, state.casting.duration - state.casting.elapsed).toFixed(1)}s`;
+
+        if (state.casting.elapsed >= state.casting.duration) {
+          document.getElementById('hero-cast-box').classList.add('hidden');
+          state.casting = null;
+          playSfx('ult');
+          triggerFighterAttackAnimation('hero', true);
+
+          const ultDmg = Math.round(s.atk * 2.75);
+          state.enemyHp -= ultDmg;
+          spawnPopup(`⚡ ${ultDmg} ULTIMATE!`, false, '#fde047', 'text-base');
+          logMsg(`🔥 ¡Lanzas ${CLASSES[state.cls].ultName} causando ${ultDmg} de daño masivo!`, 'text-amber-300 font-bold');
+          checkEndOfBattle();
+        }
+      } else {
+        heroTurnTimer += dt;
+        const interval = 1.45 / (CLASSES[state.cls].spd * NATURES[state.nature].spdM);
+        if (heroTurnTimer >= interval) {
+          heroTurnTimer = 0;
+          if (state.ult >= 100) {
+            state.ult = 0;
+            state.casting = { duration: 1.35, elapsed: 0 };
+            document.getElementById('hero-cast-label').textContent = `⚡ CASTEANDO ${CLASSES[state.cls].ultName.toUpperCase()}...`;
+            document.getElementById('hero-cast-box').classList.remove('hidden');
+          } else {
+            triggerFighterAttackAnimation('hero', false);
+            const isCrit = state.guaranteedCrit || Math.random() < s.crit;
+            state.guaranteedCrit = false;
+            const dmg = Math.max(10, Math.round(s.atk * (isCrit ? 1.85 : 1.0) * (1 - state.enemy.def / 100)));
+
+            state.enemyHp -= dmg;
+            state.ult = Math.min(100, state.ult + 30);
+            playSfx(isCrit ? 'crit' : 'slash');
+            spawnPopup(isCrit ? `💥 ${dmg} CRIT!` : `-${dmg}`, false, isCrit ? '#fde047' : '#ffffff');
+
+            if (state.skills.vamp) {
+              const vampMult = (isCrit && s.hasCarnageSynergy) ? 2.0 : 1.0;
+              const heal = Math.round(dmg * 0.12 * state.skills.vamp * vampMult);
+              state.hp = Math.min(state.maxHp, state.hp + heal);
+            }
+            checkEndOfBattle();
+          }
+        }
+      }
+
+      // 2. ENEMIGO / JEFE: CANALIZACIÓN DE ULTIMATE O ATAQUE
+      if (!state.inCombat || state.enemyStun > 0) return;
+
+      if (state.enemyCasting) {
+        animState.enemy.phase = 'cast';
+        state.enemyCasting.elapsed += dt;
+        const pct = Math.min(100, (state.enemyCasting.elapsed / state.enemyCasting.duration) * 100);
+        document.getElementById('enemy-cast-bar').style.width = `${pct}%`;
+        document.getElementById('enemy-cast-timer').textContent = `${Math.max(0, state.enemyCasting.duration - state.enemyCasting.elapsed).toFixed(1)}s`;
+
+        if (state.enemyCasting.elapsed >= state.enemyCasting.duration) {
+          document.getElementById('enemy-cast-box').classList.add('hidden');
+          state.enemyCasting = null;
+          state.missedInt++;
+          playSfx('ult');
+          triggerFighterAttackAnimation('enemy', true);
+
+          let eDmg = Math.round(state.enemy.atk * 2.5 * (1 - s.def / 100));
+          if (state.shieldBuff > 0) eDmg = Math.round(eDmg * 0.35);
+          state.hp -= eDmg;
+          spawnPopup(`💀 -${eDmg}`, true, '#ef4444', 'text-base');
+          logMsg(`⚠️ ¡${state.enemy.name} descargó su ataque canalizado por ${eDmg} de daño!`, 'text-red-400 font-bold');
+          checkEndOfBattle();
+        }
+      } else {
+        enemyTurnTimer += dt;
+        if (enemyTurnTimer >= 1.55) {
+          enemyTurnTimer = 0;
+          state.enemy.turn++;
+
+          if (state.enemyUlt >= 100 || state.enemy.turn % 2 === 0) {
+            state.enemyUlt = 0;
+            state.enemyCasting = { duration: 1.65, elapsed: 0 };
+            document.getElementById('enemy-cast-box').classList.remove('hidden');
+          } else {
+            triggerFighterAttackAnimation('enemy', false);
+            let dmg = Math.max(10, Math.round(state.enemy.atk * (1 - s.def / 100)));
+            if (state.shieldBuff > 0) dmg = Math.round(dmg * 0.35);
+
+            state.hp -= dmg;
+            state.enemyUlt = Math.min(100, state.enemyUlt + 35);
+            playSfx('slash');
+            spawnPopup(`-${dmg}`, true, '#fca5a5');
+
+            if (state.skills.thorns) {
+              const reflect = Math.round(dmg * 0.20 * state.skills.thorns * (s.hasFortressSynergy ? 1.5 : 1.0));
+              state.enemyHp -= reflect;
+            }
+            checkEndOfBattle();
+          }
+        }
+      }
+
+      updateUI();
     }
 
-    function updateHUD() {
-      document.getElementById('hero-hp-txt').textContent = `${Math.max(0, state.hp)} / ${state.maxHp} HP`;
-      document.getElementById('hero-hp-bar').style.width = `${Math.max(0, (state.hp / state.maxHp) * 100)}%`;
-      document.getElementById('hero-ult-bar').style.width = `${state.ult}%`;
+    function checkEndOfBattle() {
+      if (state.enemyHp <= 0) {
+        state.enemyHp = 0;
+        state.inCombat = false;
+        document.getElementById('hero-cast-box').classList.add('hidden');
+        document.getElementById('enemy-cast-box').classList.add('hidden');
+        playSfx('win');
 
-      document.getElementById('enemy-hp-txt').textContent = `${Math.max(0, state.enemyHp)} / ${state.enemyMaxHp} HP`;
-      document.getElementById('enemy-hp-bar').style.width = `${Math.max(0, (state.enemyHp / state.enemyMaxHp) * 100)}%`;
+        const cleared = state.stage;
+        const goldWon = 160 + cleared * 45 + (state.enemy.isBoss ? 250 : 0);
+        state.gold += goldWon;
+        state.level++;
+        state.statPts += 2;
 
-      document.getElementById('gold-txt').textContent = state.gold;
-      document.getElementById('lvl-txt').textContent = state.level;
-      document.getElementById('pts-txt').textContent = state.statPts;
-      document.getElementById('potions-txt').textContent = state.potions;
+        // Subir habilidad aleatoria (Roguelike Run)
+        const randSk = SKILLS[Math.floor(Math.random() * SKILLS.length)];
+        state.skills[randSk.id] = (state.skills[randSk.id] || 0) + 1;
 
-      document.getElementById('stat-atk').textContent = state.baseAtk;
-      document.getElementById('stat-hp').textContent = state.maxHp;
-      document.getElementById('stat-def').textContent = `${state.baseDef}%`;
+        const loot = BOSS_LOOT[cleared] || null;
+        if (loot) state.equip.weapon = loot;
+
+        if (state.stage < 20) state.stage++;
+        openResultModal(true, { cleared, enemyName: state.enemy.name, goldWon, skillName: randSk.name, loot });
+      } else if (state.hp <= 0) {
+        state.hp = 0;
+        state.inCombat = false;
+        document.getElementById('hero-cast-box').classList.add('hidden');
+        document.getElementById('enemy-cast-box').classList.add('hidden');
+        openResultModal(false, { enemyName: state.enemy.name });
+      }
+      updateUI();
     }
 
-    // Eventos UI Creación
+    function openResultModal(win, info) {
+      const modal = document.getElementById('result-modal');
+      const badge = document.getElementById('res-badge');
+      const title = document.getElementById('res-title');
+      const sub = document.getElementById('res-subtitle');
+      const details = document.getElementById('res-details');
+      const lootBox = document.getElementById('boss-loot-banner');
+
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+
+      if (win) {
+        badge.className = 'inline-block px-4 py-1 rounded-full text-xs font-black uppercase bg-emerald-900 text-emerald-200 border border-emerald-400';
+        badge.textContent = `Nivel ${info.cleared} Completado`;
+        title.className = 'font-cinzel text-3xl font-black text-amber-400';
+        title.textContent = '🏆 ¡VICTORIA EN LA ARENA!';
+        sub.textContent = `Has vencido a ${info.enemyName}.`;
+        details.innerHTML = `
+          <div class="flex justify-between"><span>Oro Ganado:</span><strong class="text-amber-400">+${info.goldWon} 🪙</strong></div>
+          <div class="flex justify-between"><span>Nivel de Campeón:</span><strong class="text-emerald-400">Nivel ${state.level} (+2 Puntos)</strong></div>
+          <div class="flex justify-between"><span>Habilidad Aleatoria:</span><strong class="text-purple-300">+1 [${info.skillName}]</strong></div>
+        `;
+        if (info.loot) {
+          lootBox.classList.remove('hidden');
+          document.getElementById('boss-loot-name').textContent = `${info.loot.name} (+${info.loot.atk} ATQ / +${info.loot.hp} HP)`;
+        } else {
+          lootBox.classList.add('hidden');
+        }
+      } else {
+        badge.className = 'inline-block px-4 py-1 rounded-full text-xs font-black uppercase bg-red-950 text-red-300 border border-red-500';
+        badge.textContent = 'Derrota en la Arena';
+        title.className = 'font-cinzel text-3xl font-black text-red-500';
+        title.textContent = '💀 ¡HAS CAÍDO EN COMBATE!';
+        sub.textContent = `${info.enemyName} te ha derrotado.`;
+        lootBox.classList.add('hidden');
+        details.innerHTML = `
+          <div>• Casteos enemigos no interrumpidos con [1]: <strong class="text-red-400">${state.missedInt}</strong></div>
+          <div>• Puntos de atributo disponibles para gastar: <strong class="text-amber-300">${state.statPts}</strong></div>
+          <div>• Oro disponible para forjar armas/armaduras: <strong class="text-amber-400">${state.gold} 🪙</strong></div>
+        `;
+      }
+    }
+
+    document.getElementById('res-continue-btn').addEventListener('click', () => {
+      document.getElementById('result-modal').classList.add('hidden');
+      document.getElementById('result-modal').classList.remove('flex');
+      setupStageEnemy(state.stage);
+    });
+
+    // =========================================================================
+    // 8. CONTROLES TÁCTICOS Y PERSONALIZACIÓN
+    // =========================================================================
+    function useInterrupt() {
+      if (!state.inCombat || state.cdInt > 0) return;
+      state.cdInt = 5.0;
+      triggerFighterAttackAnimation('hero', false);
+      if (state.enemyCasting) {
+        state.enemyCasting = null;
+        state.enemyStun = 1.6;
+        animState.enemy.phase = 'idle';
+        document.getElementById('enemy-cast-box').classList.add('hidden');
+        state.ult = Math.min(100, state.ult + 30);
+        state.guaranteedCrit = true;
+        spawnPopup('🦶 ¡INTERRUMPIDO!', false, '#38bdf8');
+        logMsg('🦶 ¡Patada perfecta! Cortaste el Ultimate enemigo y tu siguiente golpe será CRÍTICO.', 'text-amber-300 font-bold');
+      } else {
+        spawnPopup('🦶 Patada', false, '#cbd5e1');
+      }
+    }
+
+    function useShield() {
+      if (!state.inCombat || state.cdShd > 0) return;
+      state.cdShd = 7.5;
+      state.shieldBuff = 3.2;
+      spawnPopup('🛡️ ESCUDO ACTIVO', true, '#22d3ee');
+      logMsg('🛡️ Escudo activado (-65% daño recibido durante 3.2s).', 'text-cyan-300');
+    }
+
+    function usePotion() {
+      if (!state.inCombat || state.potions <= 0) return;
+      state.potions--;
+      const heal = Math.round(state.maxHp * 0.40);
+      state.hp = Math.min(state.maxHp, state.hp + heal);
+      spawnPopup(`🧪 +${heal} HP`, true, '#4ade80');
+      updateUI();
+    }
+
+    document.getElementById('btn-interrupt').addEventListener('click', useInterrupt);
+    document.getElementById('btn-shield').addEventListener('click', useShield);
+    document.getElementById('btn-potion').addEventListener('click', usePotion);
+    window.addEventListener('keydown', e => {
+      if (e.key === '1') useInterrupt();
+      if (e.key === '2') useShield();
+      if (e.key === '3') usePotion();
+    });
+
+    // Eventos del Creador de Campeón
+    document.querySelectorAll('.gender-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.gender-btn').forEach(b => b.className = 'gender-btn bg-slate-900 border border-slate-700 rounded py-1.5 text-xs font-bold text-slate-300');
+        btn.className = 'gender-btn bg-amber-900/60 border-2 border-amber-400 rounded py-1.5 text-xs font-bold text-white';
+        state.gender = btn.dataset.gender;
+        updateUI();
+      });
+    });
+
     document.querySelectorAll('.class-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        document.querySelectorAll('.class-btn').forEach(b => b.className = 'class-btn p-2 rounded bg-slate-900 border border-slate-700 text-xs font-bold text-center');
-        btn.className = 'class-btn p-2 rounded bg-amber-900/50 border-2 border-amber-400 text-xs font-bold text-center';
+        document.querySelectorAll('.class-btn').forEach(b => b.className = 'class-btn bg-slate-900 border border-slate-700 rounded p-2 text-xs font-bold text-center');
+        btn.className = 'class-btn bg-amber-900/60 border-2 border-amber-400 rounded p-2 text-xs font-bold text-center';
         state.cls = btn.dataset.class;
         const c = CLASSES[state.cls];
         state.baseAtk = c.atk; state.baseHp = c.hp; state.baseDef = c.def;
-        updateHUD();
+        updateUI();
+      });
+    });
+
+    ['hair-style-select', 'hair-color-select', 'eye-color-select', 'armor-color-select'].forEach(id => {
+      document.getElementById(id).addEventListener('change', () => {
+        state.hairStyle = document.getElementById('hair-style-select').value;
+        state.hairColor = document.getElementById('hair-color-select').value;
+        state.eyeColor = document.getElementById('eye-color-select').value;
+        state.armorColor = document.getElementById('armor-color-select').value;
+        updateUI();
       });
     });
 
     document.querySelectorAll('.nature-card').forEach(card => {
       card.addEventListener('click', () => {
-        document.querySelectorAll('.nature-card').forEach(c => c.className = 'nature-card cursor-pointer p-2 rounded border border-slate-700 bg-slate-900 text-xs');
-        card.className = 'nature-card cursor-pointer p-2 rounded border-2 border-amber-400 bg-amber-950/40 text-xs';
+        document.querySelectorAll('.nature-card').forEach(c => c.className = 'nature-card cursor-pointer p-2 rounded border border-slate-700 bg-slate-900');
+        card.className = 'nature-card cursor-pointer p-2 rounded border-2 border-amber-400 bg-amber-950/40';
         state.nature = card.dataset.nature;
+        updateUI();
       });
+    });
+
+    document.getElementById('preview-attack-btn').addEventListener('click', () => {
+      playSfx('slash');
+      animState.hero.phase = 'slash';
+      animState.hero.slashTrail = 0.25;
+      setTimeout(() => animState.hero.phase = 'idle', 350);
     });
 
     document.getElementById('start-game-btn').addEventListener('click', () => {
       state.name = document.getElementById('hero-name-input').value.trim() || 'Maximus';
-      state.gender = document.getElementById('gender-select').value;
-      state.color = document.getElementById('color-select').value;
       document.getElementById('creation-modal').classList.add('hidden');
-      document.getElementById('hero-hud-name').textContent = `${state.name} (${CLASSES[state.cls].name})`;
-      updateHUD();
+      resizeArena();
+      updateUI();
     });
 
-    document.getElementById('btn-fight').addEventListener('click', () => {
+    document.getElementById('edit-hero-btn').addEventListener('click', () => {
       if (state.inCombat) return;
-      state.inCombat = true;
-      state.hp = state.maxHp;
+      document.getElementById('creation-modal').classList.remove('hidden');
+    });
+
+    document.getElementById('demo-slash-btn').addEventListener('click', () => {
+      playSfx('slash');
+      triggerFighterAttackAnimation('hero', false);
+    });
+
+    document.getElementById('demo-ult-btn').addEventListener('click', () => {
+      playSfx('ult');
+      triggerFighterAttackAnimation('hero', true);
+    });
+
+    document.getElementById('fight-btn').addEventListener('click', () => {
+      if (state.inCombat) return;
+      const s = getHeroStats();
+      state.maxHp = s.maxHp;
+      state.hp = s.maxHp;
+      state.ult = 0;
+      state.potions = 2;
+      state.missedInt = 0;
       state.enemyHp = state.enemyMaxHp;
-      log(`⚔️ Inicia el duelo contra ${state.enemyName}!`);
+      state.enemyUlt = 0;
+      state.inCombat = true;
+      logMsg(`⚔️ ¡Comienza el combate contra ${state.enemy.name}!`, 'text-amber-300 font-bold');
     });
 
-    // Controles tácticos
-    document.getElementById('btn-interrupt').addEventListener('click', () => {
-      if (!state.inCombat) return;
-      state.stun = 1.6;
-      popText('🦶 ¡INTERRUMPIDO!', false, '#38bdf8');
-      log('¡Patada perfecta! Has aturdido al oponente.');
-    });
-
-    document.getElementById('btn-shield').addEventListener('click', () => {
-      if (!state.inCombat) return;
-      state.shield = 3.0;
-      popText('🛡️ ESCUDO', true, '#22d3ee');
-      log('Muro de escudos activo (-65% daño recibido).');
-    });
-
-    document.getElementById('btn-potion').addEventListener('click', () => {
-      if (!state.inCombat || state.potions <= 0) return;
-      state.potions--;
-      const heal = Math.round(state.maxHp * 0.4);
-      state.hp = Math.min(state.maxHp, state.hp + heal);
-      popText(`🧪 +${heal}`, true, '#10b981');
-      log(`Bebiste una poción y recuperaste ${heal} HP.`);
-      updateHUD();
-    });
-
-    document.querySelectorAll('.stat-btn').forEach(btn => {
+    document.querySelectorAll('.add-stat-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         if (state.statPts <= 0) return;
         state.statPts--;
         const st = btn.dataset.stat;
         if (st === 'atk') state.baseAtk += 6;
-        if (st === 'hp') { state.maxHp += 100; state.hp += 100; }
+        if (st === 'hp') state.baseHp += 110;
         if (st === 'def') state.baseDef += 4;
-        updateHUD();
+        updateUI();
       });
     });
 
-    // Bucle principal de animación y combate
-    let lastTime = 0;
-    function gameLoop(timestamp) {
-      const dt = (timestamp - lastTime) / 1000;
-      lastTime = timestamp;
-      animFrame++;
-
-      if (state.inCombat) {
-        if (state.shield > 0) state.shield -= dt;
-        if (state.stun > 0) state.stun -= dt;
-
-        combatTimer += dt;
-        if (combatTimer >= 1.5) {
-          combatTimer = 0;
-          
-          // Turno Héroe
-          heroAction = 'attack';
-          setTimeout(() => heroAction = 'idle', 300);
-          const isCrit = Math.random() < 0.2;
-          const dmgH = Math.max(12, Math.round(state.baseAtk * (isCrit ? 1.8 : 1.0) * (1 - 15 / 100)));
-          state.enemyHp -= dmgH;
-          state.ult = Math.min(100, state.ult + 30);
-          popText(isCrit ? `💥 ${dmgH}` : `-${dmgH}`, false, isCrit ? '#facc15' : '#ffffff');
-          log(`${state.name} ataca e inflige ${dmgH} de daño.`);
-
-          // Turno Enemigo
-          if (state.enemyHp > 0 && state.stun <= 0) {
-            enemyAction = 'attack';
-            setTimeout(() => enemyAction = 'idle', 300);
-            let dmgE = Math.max(10, Math.round(42 * (1 - state.baseDef / 100)));
-            if (state.shield > 0) dmgE = Math.round(dmgE * 0.35);
-            state.hp -= dmgE;
-            popText(`-${dmgE}`, true, '#ef4444');
-            log(`${state.enemyName} contraataca e inflige ${dmgE} de daño.`);
-          }
-
-          if (state.enemyHp <= 0) {
-            state.inCombat = false;
-            state.gold += 180;
-            state.level++;
-            state.statPts += 2;
-            document.getElementById('res-modal').classList.remove('hidden');
-            document.getElementById('res-modal').classList.add('flex');
-          } else if (state.hp <= 0) {
-            state.inCombat = false;
-            document.getElementById('res-badge').className = 'inline-block px-3 py-1 rounded-full text-xs font-black uppercase bg-red-900 text-red-200 border border-red-500';
-            document.getElementById('res-badge').textContent = 'Derrota';
-            document.getElementById('res-title').textContent = '💀 HAS SIDO DERROTADO';
-            document.getElementById('res-desc').textContent = 'Mejora tus atributos o usa interrupciones.';
-            document.getElementById('res-modal').classList.remove('hidden');
-            document.getElementById('res-modal').classList.add('flex');
-          }
-          updateHUD();
-        }
-      }
-
-      renderArena();
-      requestAnimationFrame(gameLoop);
-    }
-
-    document.getElementById('res-btn').addEventListener('click', () => {
-      document.getElementById('res-modal').classList.add('hidden');
-      document.getElementById('res-modal').classList.remove('flex');
-      state.stage++;
-      state.enemyHp = 700 + state.stage * 40;
-      state.enemyMaxHp = state.enemyHp;
-      document.getElementById('stage-txt').textContent = `${state.stage} / 20`;
-      updateHUD();
+    document.getElementById('roll-skill-btn').addEventListener('click', () => {
+      if (state.gold < 120) return logMsg('❌ Necesitas 120 de oro para la Ruleta de Habilidades.', 'text-red-400');
+      state.gold -= 120;
+      const sk = SKILLS[Math.floor(Math.random() * SKILLS.length)];
+      state.skills[sk.id] = (state.skills[sk.id] || 0) + 1;
+      logMsg(`🎲 Ruleta: ¡Has obtenido +1 nivel en [${sk.name}]!`, 'text-purple-300 font-bold');
+      updateUI();
     });
 
-    updateHUD();
-    requestAnimationFrame(gameLoop);
+    document.getElementById('change-nature-btn').addEventListener('click', () => {
+      if (state.gold < 1500) return logMsg('❌ Cambiar de Naturaleza cuesta 1,500 de oro.', 'text-red-400');
+      state.gold -= 1500;
+      const keys = Object.keys(NATURES);
+      state.nature = keys[(keys.indexOf(state.nature) + 1) % keys.length];
+      logMsg(`🧬 Tu Naturaleza ha cambiado a ${NATURES[state.nature].name}.`, 'text-amber-300');
+      updateUI();
+    });
+
+    // =========================================================================
+    // 9. BUCLE PRINCIPAL DE RENDERIZADO PIXEL ART (60 FPS)
+    // =========================================================================
+    let lastTime = performance.now();
+    function mainLoop(now) {
+      requestAnimationFrame(mainLoop);
+      const dt = Math.min(0.1, (now - lastTime) / 1000);
+      lastTime = now;
+
+      if (hitStopTimer > 0) {
+        hitStopTimer -= dt;
+        return; // Pausa dramática de impacto
+      }
+
+      globalTick++;
+      stepCombat(dt);
+
+      // Reducir temporizadores de efectos en los sprites
+      ['hero', 'enemy'].forEach(k => {
+        if (animState[k].slashTrail > 0) animState[k].slashTrail = Math.max(0, animState[k].slashTrail - dt);
+        if (animState[k].hurtFlash > 0) animState[k].hurtFlash = Math.max(0, animState[k].hurtFlash - dt);
+      });
+
+      const heroCfg = {
+        gender: state.gender,
+        hairStyle: state.hairStyle,
+        hairColor: state.hairColor,
+        eyeColor: state.eyeColor,
+        armorColor: state.equip.armor ? state.equip.armor.color : state.armorColor,
+        weapon: CLASSES[state.cls].weapon,
+        weaponGlow: state.equip.weapon ? state.equip.weapon.color : '#fef08a',
+        hasShield: CLASSES[state.cls].shield || Boolean(state.equip.shield),
+        shieldActive: state.shieldBuff > 0
+      };
+
+      // 1. Renderizar Vista Previa en vivo si el modal de creación está abierto
+      previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+      renderArticulatedPixelFighter(previewCtx, 90, 105, heroCfg, animState.hero, true, 5);
+
+      // 2. Renderizar Arena Principal
+      arenaCtx.save();
+      if (screenShake > 0) {
+        arenaCtx.translate((Math.random() - 0.5) * screenShake, (Math.random() - 0.5) * screenShake);
+        screenShake = Math.max(0, screenShake - dt * 40);
+      }
+
+      drawColosseumBackground(arenaCtx, arenaCanvas.width, arenaCanvas.height);
+      const floorY = arenaCanvas.height - 78;
+
+      if (state.enemy) {
+        renderArticulatedPixelFighter(
+          arenaCtx,
+          animState.enemy.x,
+          floorY,
+          state.enemy,
+          animState.enemy,
+          false,
+          state.enemy.isBoss ? 5 : 4
+        );
+      }
+
+      renderArticulatedPixelFighter(arenaCtx, animState.hero.x, floorY, heroCfg, animState.hero, true, 4);
+
+      // 3. Partículas Pixeladas (Chispas, Polvo y Magia)
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.life -= dt;
+        if (p.life <= 0) {
+          particles.splice(i, 1);
+          continue;
+        }
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.vy += 480 * dt; // Gravedad
+        arenaCtx.fillStyle = p.color;
+        arenaCtx.fillRect(Math.floor(p.x), Math.floor(p.y), p.size, p.size);
+      }
+
+      arenaCtx.restore();
+    }
+
+    resizeArena();
+    setupStageEnemy(1);
+    requestAnimationFrame(mainLoop);
   </script>
 </body>
 </html>
